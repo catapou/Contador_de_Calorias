@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.TextStyle // Importa TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,10 +34,10 @@ class MainActivity : ComponentActivity() {
 fun CalorieHomeScreen() {
     var calorieInput by remember { mutableStateOf("") }
 
-    // Obtem altura do ecrã para calcular 5%
+    // Altura do ecrã para calcular percentagens dinâmicas
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val topSpacing = screenHeight * 0.05f // 5% do topo
-    val elementSpacing = 32.dp // Espaço fixo entre elementos
+    val topSpacing = screenHeight * 0.05f     // 5% do topo
+    val lineSpacing = screenHeight * 0.05f    // 5% entre blocos
 
     Column(
         modifier = Modifier
@@ -49,25 +50,63 @@ fun CalorieHomeScreen() {
         Text(
             text = "Calorie counter for a day",
             fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            lineHeight = 40.sp
         )
 
-        Spacer(modifier = Modifier.height(elementSpacing))
+        Spacer(modifier = Modifier.height(lineSpacing))
 
         OutlinedTextField(
             value = calorieInput,
             onValueChange = { calorieInput = it },
-            label = { Text("Calorie intake for today") },
+            label = {
+                Text(
+                    "Calorie intake for today",
+                    style = LocalTextStyle.current.copy(lineHeight = 24.sp)
+                )
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(elementSpacing * 2))
+        Spacer(modifier = Modifier.height(lineSpacing))
+
+        // Secção: Your Meals Today + Botões
+        Text(
+            text = "Your Meals Today!",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 32.sp
+        )
+
+        Spacer(modifier = Modifier.height(lineSpacing))
+
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Button(
+                onClick = {  },
+                modifier = Modifier.weight(1f).padding(end = 8.dp)
+            ) {
+                Text("Add a Meal", lineHeight = 20.sp)
+            }
+
+            Button(
+                onClick = {  },
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            ) {
+                Text("Remove a Meal", lineHeight = 20.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(lineSpacing))
 
         Text(
             text = "Calories left to consume: ${calorieInput.ifBlank { "0" }} Kcal",
             fontSize = 26.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 36.sp
         )
     }
 }
