@@ -65,7 +65,7 @@ fun CalorieHomeScreen() {
         Spacer(modifier = Modifier.height(topSpacing))
 
         Text(
-            text = "Calorie counter for a day",
+            text = "Daily Calorie Log",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 40.sp
@@ -174,6 +174,7 @@ fun CalorieHomeScreen() {
             fontWeight = FontWeight.SemiBold,
             lineHeight = 36.sp
         )
+        Spacer(modifier = Modifier.height(lineSpacing))
     }
 
     // Diálogo de adicionar refeição
