@@ -42,14 +42,11 @@ fun CalorieHomeScreen() {
 
     val mealList = remember { mutableStateListOf<Meal>() }
 
-    // Soma de todas as calorias das refeições
     val totalMealCalories = mealList.sumOf { it.calories }
 
-    // Valor total convertido em Int de forma segura
     val dailyLimit = calorieInput.toIntOrNull() ?: 0
     val remainingCalories = dailyLimit - totalMealCalories
 
-    // Altura do ecrã para espaçamentos dinâmicos
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val topSpacing = screenHeight * 0.05f
     val lineSpacing = screenHeight * 0.05f
