@@ -4,12 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,17 +31,28 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data class Meal(val name: String, val calories: Int)
+
 @Composable
 fun CalorieHomeScreen() {
-    var calorieInput by remember { mutableStateOf("") }
+    var calorieInput by remember { mutableStateOf("") } // Total diário dado pelo utilizador
     var showMealDialog by remember { mutableStateOf(false) }
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
 
-    // Altura do ecrã para calcular percentagens dinâmicas
+    val mealList = remember { mutableStateListOf<Meal>() }
+
+    // Soma de todas as calorias das refeições
+    val totalMealCalories = mealList.sumOf { it.calories }
+
+    // Valor total convertido em Int de forma segura
+    val dailyLimit = calorieInput.toIntOrNull() ?: 0
+    val remainingCalories = dailyLimit - totalMealCalories
+
+    // Altura do ecrã para espaçamentos dinâmicos
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val topSpacing = screenHeight * 0.05f     // 5% do topo
-    val lineSpacing = screenHeight * 0.05f    // 5% entre blocos
+    val topSpacing = screenHeight * 0.05f
+    val lineSpacing = screenHeight * 0.05f
 
     Column(
         modifier = Modifier
@@ -89,27 +101,42 @@ fun CalorieHomeScreen() {
         ) {
             Button(
                 onClick = { showMealDialog = true },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp)
+                modifier = Modifier.weight(1f).padding(end = 8.dp)
             ) {
                 Text("Add a Meal", lineHeight = 20.sp)
             }
 
             Button(
-                onClick = { /* TODO: Remove meal logic */ },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp)
+                onClick = {
+                    if (mealList.isNotEmpty()) mealList.removeLast()
+                },
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
             ) {
                 Text("Remove a Meal", lineHeight = 20.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(lineSpacing))
+        Spacer(modifier = Modifier.height(lineSpacing / 2))
+
+        // Lista de refeições
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(mealList) { meal ->
+                Text(
+                    text = "${meal.name}: ${meal.calories} Kcal",
+                    fontSize = 18.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(lineSpacing / 2))
 
         Text(
-            text = "Calories left to consume: ${calorieInput.ifBlank { "0" }} Kcal",
+            text = "Calories left to consume: ${remainingCalories.coerceAtLeast(0)} Kcal",
             fontSize = 26.sp,
             fontWeight = FontWeight.SemiBold,
             lineHeight = 36.sp
@@ -127,7 +154,11 @@ fun CalorieHomeScreen() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Aqui poderás guardar os dados no futuro
+                        val name = mealName.trim()
+                        val calories = mealCalories.toIntOrNull() ?: 0
+                        if (name.isNotBlank() && calories > 0) {
+                            mealList.add(Meal(name, calories))
+                        }
                         showMealDialog = false
                         mealName = ""
                         mealCalories = ""
