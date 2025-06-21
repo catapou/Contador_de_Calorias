@@ -16,7 +16,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Contador_de_Calorias">
+            android:theme="@style/Theme.Contador_de_Calorias"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
