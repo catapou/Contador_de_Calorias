@@ -9,7 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.TextStyle // Importa TextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,6 +33,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun CalorieHomeScreen() {
     var calorieInput by remember { mutableStateOf("") }
+    var showMealDialog by remember { mutableStateOf(false) }
+    var mealName by remember { mutableStateOf("") }
+    var mealCalories by remember { mutableStateOf("") }
 
     // Altura do ecrã para calcular percentagens dinâmicas
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -71,7 +74,6 @@ fun CalorieHomeScreen() {
 
         Spacer(modifier = Modifier.height(lineSpacing))
 
-        // Secção: Your Meals Today + Botões
         Text(
             text = "Your Meals Today!",
             fontSize = 22.sp,
@@ -86,15 +88,19 @@ fun CalorieHomeScreen() {
             modifier = Modifier.fillMaxWidth()
         ) {
             Button(
-                onClick = {  },
-                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                onClick = { showMealDialog = true },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
             ) {
                 Text("Add a Meal", lineHeight = 20.sp)
             }
 
             Button(
-                onClick = {  },
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                onClick = { /* TODO: Remove meal logic */ },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
             ) {
                 Text("Remove a Meal", lineHeight = 20.sp)
             }
@@ -107,6 +113,62 @@ fun CalorieHomeScreen() {
             fontSize = 26.sp,
             fontWeight = FontWeight.SemiBold,
             lineHeight = 36.sp
+        )
+    }
+
+    // Diálogo de adicionar refeição
+    if (showMealDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showMealDialog = false
+                mealName = ""
+                mealCalories = ""
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // Aqui poderás guardar os dados no futuro
+                        showMealDialog = false
+                        mealName = ""
+                        mealCalories = ""
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showMealDialog = false
+                        mealName = ""
+                        mealCalories = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            },
+            title = {
+                Text("What was your meal?")
+            },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = mealName,
+                        onValueChange = { mealName = it },
+                        placeholder = { Text("Meal name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = mealCalories,
+                        onValueChange = { mealCalories = it },
+                        label = { Text("and how many calories did it have?") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         )
     }
 }
