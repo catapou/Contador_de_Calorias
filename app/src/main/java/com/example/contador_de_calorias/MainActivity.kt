@@ -28,7 +28,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Menu // Adicionado: Ícone de menu
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +37,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.res.painterResource
 import com.example.contador_de_calorias.R
 import androidx.compose.foundation.Image
-import kotlinx.coroutines.launch // Adicionado: Para usar coroutines com o Drawer
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,13 +105,14 @@ data class Meal(
     val fats: Int = 0
 )
 
-@OptIn(ExperimentalMaterial3Api::class) // Anotação necessária para rememberDrawerState
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var calorieInput by remember { mutableStateOf("") }
     var showMealDialog by remember { mutableStateOf(false) }
     var showRemoveMealDialog by remember { mutableStateOf(false) }
     var showEditMealDialog by remember { mutableStateOf(false) }
+    var showMacroSummaryDialog by remember { mutableStateOf(false) }
 
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
@@ -133,20 +135,19 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val remainingCalories = dailyLimit - totalMealCalories
 
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp // Adicionado: Largura do ecrã
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val topSpacing = screenHeight * 0.075f
     val lineSpacing = screenHeight * 0.05f
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) // Estado do drawer
-    val scope = rememberCoroutineScope() // CoroutineScope para abrir/fechar o drawer
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(modifier = Modifier.width(screenWidth * 0.7f)) { // Define a largura do drawer
+            ModalDrawerSheet(modifier = Modifier.width(screenWidth * 0.7f)) {
                 Text("Menu", modifier = Modifier.padding(16.dp), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Divider()
-                // Botão de alternar tema movido para dentro do Drawer
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -156,7 +157,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = if (isDarkMode) "Modo Escuro" else "Modo Claro",
+                        text = if (isDarkMode) "Dark Mode" else "Light Mode",
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 18.sp
                     )
@@ -166,10 +167,31 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                // Adicione mais itens de menu aqui, se necessário
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showMacroSummaryDialog = true
+                            scope.launch { drawerState.close() }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Full Macro View",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 18.sp
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Fastfood,
+                        contentDescription = "Full Macro View",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         },
-        gesturesEnabled = drawerState.isOpen // Permite gestos apenas se o drawer estiver aberto para evitar conflitos
+        gesturesEnabled = drawerState.isOpen
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -178,12 +200,11 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Botão de menu hambúrguer no canto superior esquerdo
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = topSpacing / 2)
-                        .align(Alignment.Start) // Alinha a box ao início para que o botão fique no canto
+                        .align(Alignment.Start)
                 ) {
                     IconButton(
                         onClick = {
@@ -191,7 +212,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                 if (drawerState.isClosed) drawerState.open() else drawerState.close()
                             }
                         },
-                        modifier = Modifier.align(Alignment.TopStart) // Alinha o botão ao topo e início
+                        modifier = Modifier.align(Alignment.TopStart)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Menu,
@@ -200,7 +221,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         )
                     }
 
-                    // Logo centrado na mesma linha ou abaixo do botão do menu, se o layout o permitir
                     Image(
                         painter = painterResource(
                             id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
@@ -209,7 +229,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         contentDescription = "Calorie Log Logo",
                         modifier = Modifier
                             .size(100.dp)
-                            .align(Alignment.Center) // Centraliza a imagem horizontalmente
+                            .align(Alignment.Center)
                             .padding(bottom = 8.dp)
                     )
                 }
@@ -743,5 +763,64 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             },
             containerColor = MaterialTheme.colorScheme.surface
         )
+    }
+
+    @Composable
+    fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
+        val totalCalories = mealList.sumOf { it.calories }
+        val totalProtein = mealList.sumOf { it.protein }
+        val totalCarbs = mealList.sumOf { it.carbs }
+        val totalFats = mealList.sumOf { it.fats }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    "Daily Macro Summary",
+                    fontSize = 22.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Total Calories: $totalCalories Kcal",
+                        fontSize = 18.sp,
+                        lineHeight = 34.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Protein: $totalProtein g",
+                        fontSize = 18.sp,
+                        lineHeight = 34.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Carbohydrates: $totalCarbs g",
+                        fontSize = 18.sp,
+                        lineHeight = 34.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Fats: $totalFats g",
+                        fontSize = 18.sp,
+                        lineHeight = 34.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen)) {
+                    Text("OK")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    if (showMacroSummaryDialog) {
+        MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false })
     }
 }
