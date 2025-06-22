@@ -401,7 +401,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     OutlinedTextField(
                         value = mealCalories,
                         onValueChange = { mealCalories = it },
-                        label = { Text("And how many calories did it have?") },
+                        label = { Text("calories (Kcal)") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
