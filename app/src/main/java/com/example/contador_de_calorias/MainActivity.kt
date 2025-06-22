@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,12 +28,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Menu // Adicionado: Ícone de menu
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.res.painterResource
+import com.example.contador_de_calorias.R
 import androidx.compose.foundation.Image
+import kotlinx.coroutines.launch // Adicionado: Para usar coroutines com o Drawer
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,6 +104,7 @@ data class Meal(
     val fats: Int = 0
 )
 
+@OptIn(ExperimentalMaterial3Api::class) // Anotação necessária para rememberDrawerState
 @Composable
 fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var calorieInput by remember { mutableStateOf("") }
@@ -128,196 +133,241 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val remainingCalories = dailyLimit - totalMealCalories
 
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp // Adicionado: Largura do ecrã
     val topSpacing = screenHeight * 0.075f
     val lineSpacing = screenHeight * 0.05f
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(topSpacing / 2))
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) // Estado do drawer
+    val scope = rememberCoroutineScope() // CoroutineScope para abrir/fechar o drawer
 
-            // Lógica para alternar a imagem com base no modo escuro/claro
-            Image(
-                painter = painterResource(
-                    id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
-                    else R.drawable.logo_conta_calorias_sem_fundo_light
-                ),
-                contentDescription = "Calorie Log Logo",
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(bottom = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(lineSpacing / 32))
-
-            OutlinedTextField(
-                value = calorieInput,
-                onValueChange = { calorieInput = it },
-                label = {
-                    Text(
-                        "Calorie intake for today",
-                        style = LocalTextStyle.current.copy(lineHeight = 24.sp)
-                    )
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-
-            Spacer(modifier = Modifier.height(lineSpacing / 4))
-
-            Text(
-                text = "Your Meals Today!",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 32.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(lineSpacing / 4))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Button(
-                    onClick = { showMealDialog = true },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 4.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("Add a Meal", lineHeight = 20.sp)
-                }
-
-                Button(
-                    onClick = {
-                        showRemoveMealDialog = true
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("Remove a Meal", lineHeight = 20.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(lineSpacing / 2))
-
-            if (mealList.isNotEmpty()) {
-                LazyColumn(
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(modifier = Modifier.width(screenWidth * 0.7f)) { // Define a largura do drawer
+                Text("Menu", modifier = Modifier.padding(16.dp), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Divider()
+                // Botão de alternar tema movido para dentro do Drawer
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 450.dp)
-                        .padding(vertical = 8.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .clickable { toggleTheme() }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    items(mealList) { meal ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        selectedMealToEdit = meal
-                                        editedMealName = meal.name
-                                        editedMealCalories = meal.calories.toString()
-                                        editedMealProtein = meal.protein.toString()
-                                        editedMealCarbs = meal.carbs.toString()
-                                        editedMealFats = meal.fats.toString()
-                                        showEditMealDialog = true
-                                    }
-                                ),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = meal.name,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    lineHeight = 24.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = "${meal.calories} Kcal",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    lineHeight = 22.sp
-                                )
-                                var macrosText = ""
-                                if (meal.protein > 0) macrosText += "P: ${meal.protein}g "
-                                if (meal.carbs > 0) macrosText += "C: ${meal.carbs}g "
-                                if (meal.fats > 0) macrosText += "G: ${meal.fats}g "
+                    Text(
+                        text = if (isDarkMode) "Modo Escuro" else "Modo Claro",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 18.sp
+                    )
+                    Icon(
+                        imageVector = if (isDarkMode) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
+                        contentDescription = if (isDarkMode) "Dark Mode" else "Light Mode",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                // Adicione mais itens de menu aqui, se necessário
+            }
+        },
+        gesturesEnabled = drawerState.isOpen // Permite gestos apenas se o drawer estiver aberto para evitar conflitos
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Botão de menu hambúrguer no canto superior esquerdo
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = topSpacing / 2)
+                        .align(Alignment.Start) // Alinha a box ao início para que o botão fique no canto
+                ) {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                if (drawerState.isClosed) drawerState.open() else drawerState.close()
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.TopStart) // Alinha o botão ao topo e início
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = "Menu",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
 
-                                if (macrosText.isNotBlank()) {
+                    // Logo centrado na mesma linha ou abaixo do botão do menu, se o layout o permitir
+                    Image(
+                        painter = painterResource(
+                            id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
+                            else R.drawable.logo_conta_calorias_sem_fundo_light
+                        ),
+                        contentDescription = "Calorie Log Logo",
+                        modifier = Modifier
+                            .size(100.dp)
+                            .align(Alignment.Center) // Centraliza a imagem horizontalmente
+                            .padding(bottom = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(lineSpacing / 32))
+
+                OutlinedTextField(
+                    value = calorieInput,
+                    onValueChange = { calorieInput = it },
+                    label = {
+                        Text(
+                            "Calorie intake for today",
+                            style = LocalTextStyle.current.copy(lineHeight = 24.sp)
+                        )
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(lineSpacing / 4))
+
+                Text(
+                    text = "Your Meals Today!",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 32.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Spacer(modifier = Modifier.height(lineSpacing / 4))
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = { showMealDialog = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.DarkGray,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Add a Meal", lineHeight = 20.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            showRemoveMealDialog = true
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.DarkGray,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Remove a Meal", lineHeight = 20.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(lineSpacing / 2))
+
+                if (mealList.isNotEmpty()) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 450.dp)
+                            .padding(vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(mealList) { meal ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {
+                                            selectedMealToEdit = meal
+                                            editedMealName = meal.name
+                                            editedMealCalories = meal.calories.toString()
+                                            editedMealProtein = meal.protein.toString()
+                                            editedMealCarbs = meal.carbs.toString()
+                                            editedMealFats = meal.fats.toString()
+                                            showEditMealDialog = true
+                                        }
+                                    ),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
                                     Text(
-                                        text = macrosText.trim(),
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                        lineHeight = 18.sp
+                                        text = meal.name,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        lineHeight = 24.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    Text(
+                                        text = "${meal.calories} Kcal",
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        lineHeight = 22.sp
+                                    )
+                                    var macrosText = ""
+                                    if (meal.protein > 0) macrosText += "P: ${meal.protein}g "
+                                    if (meal.carbs > 0) macrosText += "C: ${meal.carbs}g "
+                                    if (meal.fats > 0) macrosText += "G: ${meal.fats}g "
+
+                                    if (macrosText.isNotBlank()) {
+                                        Text(
+                                            text = macrosText.trim(),
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            lineHeight = 18.sp
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(lineSpacing / 2))
+
+                Text(
+                    text = if (remainingCalories < 0) {
+                        val exceededCalories = totalMealCalories - dailyLimit
+                        "Calories exceeded by: $exceededCalories Kcal"
+                    } else {
+                        "Calories left to consume: ${remainingCalories.coerceAtLeast(0)} Kcal"
+                    },
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 36.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(lineSpacing))
             }
-
-            Spacer(modifier = Modifier.height(lineSpacing / 2))
-
-            Text(
-                text = if (remainingCalories < 0) {
-                    val exceededCalories = totalMealCalories - dailyLimit
-                    "Calories exceeded by: $exceededCalories Kcal"
-                } else {
-                    "Calories left to consume: ${remainingCalories.coerceAtLeast(0)} Kcal"
-                },
-                fontSize = 26.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 36.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(lineSpacing))
-        }
-
-        IconButton(
-            onClick = toggleTheme,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 32.dp, end = 16.dp)
-        ) {
-            Icon(
-                imageVector = if (isDarkMode) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
-                contentDescription = if (isDarkMode) "Dark Mode" else "Light Mode",
-                tint = MaterialTheme.colorScheme.onBackground
-            )
         }
     }
 
