@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +45,7 @@ data class Meal(val name: String, val calories: Int)
 fun CalorieHomeScreen() {
     var calorieInput by remember { mutableStateOf("") }
     var showMealDialog by remember { mutableStateOf(false) }
+    var showRemoveMealDialog by remember { mutableStateOf(false) }
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
 
@@ -112,7 +116,7 @@ fun CalorieHomeScreen() {
 
             Button(
                 onClick = {
-                    if (mealList.isNotEmpty()) mealList.removeLast()
+                    showRemoveMealDialog = true
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -125,37 +129,38 @@ fun CalorieHomeScreen() {
         Spacer(modifier = Modifier.height(lineSpacing / 2))
 
         // Lista de refeições
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .heightIn(max = 10.dp)
-                .padding(vertical = 8.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFE0E0E0))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(mealList) { meal ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = meal.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        lineHeight = 24.sp
-                    )
-                    Text(
-                        text = "${meal.calories} Kcal",
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        lineHeight = 22.sp
-                    )
+        if (mealList.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 450.dp)
+                    .padding(vertical = 8.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE0E0E0))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(mealList) { meal ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = meal.name,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 24.sp
+                        )
+                        Text(
+                            text = "${meal.calories} Kcal",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            lineHeight = 22.sp
+                        )
+                    }
                 }
             }
         }
@@ -232,6 +237,54 @@ fun CalorieHomeScreen() {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+            }
+        )
+    }
+
+    // New Dialog for removing a specific meal
+    if (showRemoveMealDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveMealDialog = false },
+            title = { Text("Select meal to remove") },
+            text = {
+                if (mealList.isEmpty()) {
+                    Text("No meals to remove.")
+                } else {
+                    // Display current meals in a scrollable column
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        mealList.forEach { meal ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                                    .shadow(4.dp, RoundedCornerShape(4.dp))
+                                    .background(Color.White, RoundedCornerShape(4.dp))
+                                    .clickable {
+                                        mealList.remove(meal)
+                                        showRemoveMealDialog = false
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${meal.name}: ${meal.calories} Kcal",
+                                    fontSize = 18.sp,
+                                    lineHeight = 24.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                // No "Confirm" button needed if items are removed on click
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveMealDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )
