@@ -20,12 +20,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource // Adicionado para controlar a interação
-import androidx.compose.foundation.Indication
-import androidx.compose.foundation.LocalIndication // Adicionado para controlar a indicação
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -243,7 +240,7 @@ fun CalorieHomeScreen() {
                     OutlinedTextField(
                         value = mealName,
                         onValueChange = { mealName = it },
-                        placeholder = { Text("Meal name") },
+                        label = { Text("Meal name") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -251,7 +248,7 @@ fun CalorieHomeScreen() {
                     OutlinedTextField(
                         value = mealCalories,
                         onValueChange = { mealCalories = it },
-                        label = { Text("and how many calories did it have?") },
+                        label = { Text("And how many calories did it have?") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -282,6 +279,8 @@ fun CalorieHomeScreen() {
                                     .padding(vertical = 8.dp)
                                     .background(Color.White, RoundedCornerShape(4.dp))
                                     .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
                                         onClick = {
                                             mealList.remove(meal)
                                             showRemoveMealDialog = false
