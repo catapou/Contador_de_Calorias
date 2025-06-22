@@ -20,10 +20,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.rememberScrollState // Importado para scroll
-import androidx.compose.foundation.verticalScroll // Importado para scroll vertical
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,8 +47,12 @@ fun CalorieHomeScreen() {
     var calorieInput by remember { mutableStateOf("") }
     var showMealDialog by remember { mutableStateOf(false) }
     var showRemoveMealDialog by remember { mutableStateOf(false) }
+    var showEditMealDialog by remember { mutableStateOf(false) }
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
+    var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) }
+    var editedMealName by remember { mutableStateOf("") }
+    var editedMealCalories by remember { mutableStateOf("") }
 
     val mealList = remember { mutableStateListOf<Meal>() }
 
@@ -103,39 +106,12 @@ fun CalorieHomeScreen() {
 
         Spacer(modifier = Modifier.height(lineSpacing / 4))
 
-        Row(
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Button(
-                onClick = { showMealDialog = true },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp)
-            ) {
-                Text("Add a Meal", lineHeight = 20.sp)
-            }
-
-            Button(
-                onClick = {
-                    showRemoveMealDialog = true
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp)
-            ) {
-                Text("Remove a Meal", lineHeight = 20.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(lineSpacing / 2))
-
         // Lista de refeições
         if (mealList.isNotEmpty()) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 250.dp) // Adjusted max height to allow more lines to be visible
+                    .heightIn(max = 450.dp)
                     .padding(vertical = 8.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFFE0E0E0))
@@ -165,10 +141,51 @@ fun CalorieHomeScreen() {
                     }
                 }
             }
-        } // End of conditional display for LazyColumn
+        }
 
-        Spacer(modifier = Modifier.height(lineSpacing / 2))
+        Spacer(modifier = Modifier.height(lineSpacing / 2)) // Spacer between meal list and buttons
 
+        // Row com os botões "Add" e "Remove"
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Button(
+                onClick = { showMealDialog = true },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 4.dp)
+            ) {
+                Text("Add a Meal", lineHeight = 20.sp)
+            }
+
+            Button(
+                onClick = {
+                    showRemoveMealDialog = true
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 4.dp)
+            ) {
+                Text("Remove a Meal", lineHeight = 20.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp)) // Espaço entre o grupo de botões e o botão "Edit"
+
+        // Botão "Edit a Meal" - Agora separado e abaixo dos outros dois
+        Button(
+            onClick = {
+                showEditMealDialog = true
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+        ) {
+            Text("Edit a Meal", lineHeight = 20.sp)
+        }
+
+        Spacer(modifier = Modifier.height(lineSpacing / 2)) 
 
         Text(
             text = if (remainingCalories < 0) {
@@ -244,7 +261,7 @@ fun CalorieHomeScreen() {
         )
     }
 
-    // New Dialog for removing a specific meal
+    // Dialogo para remover uma refeição específica
     if (showRemoveMealDialog) {
         AlertDialog(
             onDismissRequest = { showRemoveMealDialog = false },
@@ -283,11 +300,107 @@ fun CalorieHomeScreen() {
                     }
                 }
             },
-            confirmButton = {
-                // No "Confirm" button needed if items are removed on click
-            },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showRemoveMealDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Novo Diálogo para editar uma refeição específica
+    if (showEditMealDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showEditMealDialog = false
+                selectedMealToEdit = null
+                editedMealName = ""
+                editedMealCalories = ""
+            },
+            title = { Text(if (selectedMealToEdit == null) "Select meal to edit" else "Edit Meal") },
+            text = {
+                if (mealList.isEmpty()) {
+                    Text("No meals to edit.")
+                } else if (selectedMealToEdit == null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 350.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        mealList.forEach { meal ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                                    .shadow(4.dp, RoundedCornerShape(4.dp))
+                                    .background(Color.White, RoundedCornerShape(4.dp))
+                                    .clickable {
+                                        selectedMealToEdit = meal
+                                        editedMealName = meal.name
+                                        editedMealCalories = meal.calories.toString()
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${meal.name}: ${meal.calories} Kcal",
+                                    fontSize = 18.sp,
+                                    lineHeight = 24.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Column {
+                        OutlinedTextField(
+                            value = editedMealName,
+                            onValueChange = { editedMealName = it },
+                            label = { Text("Meal name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = editedMealCalories,
+                            onValueChange = { editedMealCalories = it },
+                            label = { Text("Calories") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (selectedMealToEdit != null) {
+                    TextButton(
+                        onClick = {
+                            val index = mealList.indexOf(selectedMealToEdit)
+                            if (index != -1) {
+                                val newName = editedMealName.trim()
+                                val newCalories = editedMealCalories.toIntOrNull() ?: 0
+                                if (newName.isNotBlank() && newCalories > 0) {
+                                    mealList[index] = Meal(newName, newCalories)
+                                }
+                            }
+                            showEditMealDialog = false
+                            selectedMealToEdit = null
+                            editedMealName = ""
+                            editedMealCalories = ""
+                        }
+                    ) {
+                        Text("Save")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showEditMealDialog = false
+                    selectedMealToEdit = null
+                    editedMealName = ""
+                    editedMealCalories = ""
+                }) {
                     Text("Cancel")
                 }
             }
