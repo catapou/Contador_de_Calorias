@@ -38,6 +38,11 @@ import androidx.compose.ui.res.painterResource
 import com.example.contador_de_calorias.R
 import androidx.compose.foundation.Image
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange // Certifica-se de que TextRange está importado
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,7 +102,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Data class Meal agora inclui as macros adicionais
 data class Meal(
     val name: String,
     val calories: Int,
@@ -110,6 +114,13 @@ data class Meal(
     val starch: Int = 0
 )
 
+data class UserInfo(
+    val dob: String = "",
+    val weight: String = "",
+    val height: String = "",
+    val activityLevel: String = ""
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
@@ -119,12 +130,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var showEditMealDialog by remember { mutableStateOf(false) }
     var showMacroSummaryDialog by remember { mutableStateOf(false) }
 
+    var showInitialInfoDialog by remember { mutableStateOf(true) }
+    var userInfo by remember { mutableStateOf(UserInfo()) }
+
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
     var mealProtein by remember { mutableStateOf("") }
     var mealCarbs by remember { mutableStateOf("") }
     var mealFats by remember { mutableStateOf("") }
-    // Estados para as macros adicionais
     var mealSalt by remember { mutableStateOf("") }
     var mealFiber by remember { mutableStateOf("") }
     var mealPolyols by remember { mutableStateOf("") }
@@ -136,12 +149,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var editedMealProtein by remember { mutableStateOf("") }
     var editedMealCarbs by remember { mutableStateOf("") }
     var editedMealFats by remember { mutableStateOf("") }
-    // Estados para as macros adicionais editadas
     var editedMealSalt by remember { mutableStateOf("") }
     var editedMealFiber by remember { mutableStateOf("") }
     var editedMealPolyols by remember { mutableStateOf("") }
     var editedMealStarch by remember { mutableStateOf("") }
-
 
     val mealList = remember { mutableStateListOf<Meal>() }
 
@@ -349,7 +360,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                             editedMealProtein = meal.protein.toString()
                                             editedMealCarbs = meal.carbs.toString()
                                             editedMealFats = meal.fats.toString()
-                                            editedMealSalt = meal.salt.toString() // Popula campos
+                                            editedMealSalt = meal.salt.toString()
                                             editedMealFiber = meal.fiber.toString()
                                             editedMealPolyols = meal.polyols.toString()
                                             editedMealStarch = meal.starch.toString()
@@ -417,25 +428,25 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
     val FadedGreen = Color(0xFF6C9E6C)
     val FadedRed = Color(0xFFB36B6B)
+    val FadedBlue = Color(0xFF6A8EAE)
 
-    // Reutilizável Composable para campos de entrada de macro
     @Composable
     fun MacroInputField(
         value: String,
         onValueChange: (String) -> Unit,
         label: String,
         keyboardType: KeyboardType = KeyboardType.Number,
-        isDouble: Boolean = false // Para lidar com Double (Sal)
+        isDouble: Boolean = false
     ) {
         OutlinedTextField(
             value = value,
-            onValueChange = { newValue -> // Use newValue aqui
+            onValueChange = { newValue ->
                 if (keyboardType == KeyboardType.Number || isDouble) {
                     if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
                         onValueChange(newValue)
                     }
                 } else {
-                    onValueChange(newValue) // Permite qualquer texto para outros tipos de teclado
+                    onValueChange(newValue)
                 }
             },
             label = { Text(label) },
@@ -454,6 +465,196 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             )
         )
         Spacer(modifier = Modifier.height(12.dp))
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun InitialInfoDialog(onDismiss: () -> Unit, onInfoSubmitted: (UserInfo) -> Unit) {
+        // Altera dobInput para TextFieldValue para controlar a posição do cursor
+        var dobInput by remember { mutableStateOf(TextFieldValue(userInfo.dob)) }
+        var weightInput by remember { mutableStateOf(userInfo.weight) }
+        var heightInput by remember { mutableStateOf(userInfo.height) }
+        var activityExpanded by remember { mutableStateOf(false) }
+        val activityLevels = listOf("Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active")
+        var selectedActivityLevel by remember { mutableStateOf(userInfo.activityLevel.ifEmpty { activityLevels[0] }) }
+
+        val isDobValid = remember(dobInput.text) { // Usa dobInput.text para a validação
+            try {
+                if (dobInput.text.length == 10 && dobInput.text[2] == '/' && dobInput.text[5] == '/') {
+                    LocalDate.parse(dobInput.text, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    true
+                } else {
+                    false
+                }
+            } catch (e: DateTimeParseException) {
+                false
+            }
+        }
+        val isWeightValid = remember(weightInput) { weightInput.toIntOrNull() != null && weightInput.toInt() > 0 }
+        val isHeightValid = remember(heightInput) { heightInput.toIntOrNull() != null && heightInput.toInt() > 0 }
+        val isFormValid = isDobValid && isWeightValid && isHeightValid && selectedActivityLevel.isNotBlank()
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    "Tell us about yourself",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    OutlinedTextField(
+                        value = dobInput,
+                        onValueChange = { newTextFieldValue ->
+                            val currentText = newTextFieldValue.text
+                            val digitsOnly = currentText.filter { it.isDigit() }
+                            var formattedText = ""
+                            var newCursorPosition = newTextFieldValue.selection.start
+
+                            // Lógica para adicionar as barras automaticamente e posicionar o cursor
+                            if (digitsOnly.length > 0) {
+                                formattedText += digitsOnly.substring(0, minOf(digitsOnly.length, 2))
+                                if (digitsOnly.length > 2) {
+                                    formattedText += "/" + digitsOnly.substring(2, minOf(digitsOnly.length, 4))
+                                }
+                                if (digitsOnly.length > 4) {
+                                    formattedText += "/" + digitsOnly.substring(4, minOf(digitsOnly.length, 8))
+                                }
+                            }
+
+                            // Ajusta a posição do cursor após a formatação
+                            // Caso o utilizador esteja a apagar, mantém a posição do cursor relativa
+                            if (newTextFieldValue.selection.start < dobInput.text.length) {
+                                newCursorPosition = newTextFieldValue.selection.start
+                            } else {
+                                // Caso contrário, coloca o cursor no final do texto formatado
+                                newCursorPosition = formattedText.length
+                                // Mas se uma barra foi inserida, move o cursor para depois da barra
+                                if (dobInput.text.length == 2 && formattedText.length == 3 && formattedText[2] == '/') {
+                                    newCursorPosition = 3
+                                } else if (dobInput.text.length == 5 && formattedText.length == 6 && formattedText[5] == '/') {
+                                    newCursorPosition = 6
+                                }
+                            }
+
+
+                            dobInput = TextFieldValue(
+                                text = formattedText.take(10), // Limita a 10 caracteres (DD/MM/YYYY)
+                                selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length)) // Garante que o cursor não sai dos limites
+                            )
+                        },
+                        label = { Text("Date of Birth (DD/MM/YYYY)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                    if (dobInput.text.isNotBlank() && !isDobValid) { // Usa dobInput.text
+                        Text("Invalid date format. Use DD/MM/YYYY.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    MacroInputField(
+                        value = weightInput,
+                        onValueChange = { weightInput = it },
+                        label = "Weight (kg)",
+                        keyboardType = KeyboardType.Number
+                    )
+                    if (weightInput.isNotBlank() && !isWeightValid) {
+                        Text("Please enter a valid weight.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    MacroInputField(
+                        value = heightInput,
+                        onValueChange = { heightInput = it },
+                        label = "Height (cm)",
+                        keyboardType = KeyboardType.Number
+                    )
+                    if (heightInput.isNotBlank() && !isHeightValid) {
+                        Text("Please enter a valid height.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = activityExpanded,
+                        onExpandedChange = { activityExpanded = !activityExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = selectedActivityLevel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Activity Level") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = activityExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = activityExpanded,
+                            onDismissRequest = { activityExpanded = false }
+                        ) {
+                            activityLevels.forEach { selectionOption ->
+                                DropdownMenuItem(
+                                    text = { Text(selectionOption) },
+                                    onClick = {
+                                        selectedActivityLevel = selectionOption
+                                        activityExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel)) // Usa dobInput.text
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
+                    enabled = isFormValid
+                ) {
+                    Text("Continue")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+
+    if (showInitialInfoDialog) {
+        InitialInfoDialog(
+            onDismiss = { /* Não permite fechar sem preencher */ },
+            onInfoSubmitted = { info ->
+                userInfo = info
+                showInitialInfoDialog = false
+            }
+        )
     }
 
 
@@ -646,7 +847,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                 val newPolyols = editedMealPolyols.toIntOrNull() ?: 0
                                 val newStarch = editedMealStarch.toIntOrNull() ?: 0
 
-
                                 if (newName.isNotBlank() && newCalories > 0) {
                                     mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch)
                                 }
@@ -742,7 +942,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Total Salt: ${String.format("%.1f", totalSalt)} g", // Formata para 1 casa decimal
+                        "Total Salt: ${String.format("%.1f", totalSalt)} g",
                         fontSize = 18.sp,
                         lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
