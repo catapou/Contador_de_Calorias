@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.rememberScrollState // Importado para scroll
+import androidx.compose.foundation.verticalScroll // Importado para scroll vertical
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -133,7 +135,7 @@ fun CalorieHomeScreen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 450.dp)
+                    .heightIn(max = 250.dp) // Adjusted max height to allow more lines to be visible
                     .padding(vertical = 8.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFFE0E0E0))
@@ -163,7 +165,7 @@ fun CalorieHomeScreen() {
                     }
                 }
             }
-        }
+        } // End of conditional display for LazyColumn
 
         Spacer(modifier = Modifier.height(lineSpacing / 2))
 
@@ -251,9 +253,11 @@ fun CalorieHomeScreen() {
                 if (mealList.isEmpty()) {
                     Text("No meals to remove.")
                 } else {
-                    // Display current meals in a scrollable column
                     Column(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 350.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
                         mealList.forEach { meal ->
                             Row(
