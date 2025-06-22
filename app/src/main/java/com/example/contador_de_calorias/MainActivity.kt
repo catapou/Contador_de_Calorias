@@ -30,8 +30,11 @@ import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.MaterialTheme // Adicionado: Importação explícita para MaterialTheme
-import androidx.compose.material3.OutlinedTextFieldDefaults // Adicionado: Importação explícita para OutlinedTextFieldDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.res.painterResource
+import com.example.contador_de_calorias.R
+import androidx.compose.foundation.Image
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,17 +140,21 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(topSpacing))
+            Spacer(modifier = Modifier.height(topSpacing / 2))
 
-            Text(
-                text = "Daily Calorie Log",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 40.sp,
-                color = MaterialTheme.colorScheme.onBackground
+            // Lógica para alternar a imagem com base no modo escuro/claro
+            Image(
+                painter = painterResource(
+                    id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
+                    else R.drawable.logo_conta_calorias_sem_fundo_light
+                ),
+                contentDescription = "Calorie Log Logo",
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(lineSpacing / 4))
+            Spacer(modifier = Modifier.height(lineSpacing / 32))
 
             OutlinedTextField(
                 value = calorieInput,
@@ -185,7 +192,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
             Spacer(modifier = Modifier.height(lineSpacing / 4))
 
-            // Row com os botões "Add" e "Remove"
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
@@ -221,7 +227,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
             Spacer(modifier = Modifier.height(lineSpacing / 2))
 
-            // Lista de refeições
             if (mealList.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier
@@ -268,9 +273,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     lineHeight = 22.sp
                                 )
-                                if (meal.protein > 0 || meal.carbs > 0 || meal.fats > 0) {
+                                var macrosText = ""
+                                if (meal.protein > 0) macrosText += "P: ${meal.protein}g "
+                                if (meal.carbs > 0) macrosText += "C: ${meal.carbs}g "
+                                if (meal.fats > 0) macrosText += "G: ${meal.fats}g "
+
+                                if (macrosText.isNotBlank()) {
                                     Text(
-                                        text = "P: ${meal.protein}g | C: ${meal.carbs}g | G: ${meal.fats}g",
+                                        text = macrosText.trim(),
                                         fontSize = 14.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                         lineHeight = 18.sp
@@ -316,7 +326,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val FadedGreen = Color(0xFF6C9E6C)
     val FadedRed = Color(0xFFB36B6B)
 
-    // Diálogo de adicionar refeição
     if (showMealDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -472,7 +481,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         )
     }
 
-    // Dialogo para remover uma refeição específica
     if (showRemoveMealDialog) {
         AlertDialog(
             onDismissRequest = { showRemoveMealDialog = false },
@@ -529,7 +537,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         )
     }
 
-    // Novo Diálogo para editar uma refeição específica
     if (showEditMealDialog) {
         AlertDialog(
             onDismissRequest = {
