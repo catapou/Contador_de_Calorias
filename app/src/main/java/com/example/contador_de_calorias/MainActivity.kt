@@ -23,6 +23,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource // Adicionado para controlar a interação
+import androidx.compose.foundation.Indication
+import androidx.compose.foundation.LocalIndication // Adicionado para controlar a indicação
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,45 +109,6 @@ fun CalorieHomeScreen() {
 
         Spacer(modifier = Modifier.height(lineSpacing / 4))
 
-        // Lista de refeições
-        if (mealList.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 450.dp)
-                    .padding(vertical = 8.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFE0E0E0))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(mealList) { meal ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = meal.name,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            lineHeight = 24.sp
-                        )
-                        Text(
-                            text = "${meal.calories} Kcal",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            lineHeight = 22.sp
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(lineSpacing / 2)) // Spacer between meal list and buttons
-
         // Row com os botões "Add" e "Remove"
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -171,21 +135,56 @@ fun CalorieHomeScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp)) // Espaço entre o grupo de botões e o botão "Edit"
+        Spacer(modifier = Modifier.height(lineSpacing / 2))
 
-        // Botão "Edit a Meal" - Agora separado e abaixo dos outros dois
-        Button(
-            onClick = {
-                showEditMealDialog = true
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp)
-        ) {
-            Text("Edit a Meal", lineHeight = 20.sp)
+        // Lista de refeições
+        if (mealList.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 450.dp)
+                    .padding(vertical = 8.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE0E0E0))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(mealList) { meal ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable( // Removed default indication here
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    selectedMealToEdit = meal
+                                    editedMealName = meal.name
+                                    editedMealCalories = meal.calories.toString()
+                                    showEditMealDialog = true
+                                }
+                            ),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = meal.name,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 24.sp
+                        )
+                        Text(
+                            text = "${meal.calories} Kcal",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(lineSpacing / 2)) 
+        Spacer(modifier = Modifier.height(lineSpacing / 2))
 
         Text(
             text = if (remainingCalories < 0) {
@@ -281,13 +280,15 @@ fun CalorieHomeScreen() {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp)
-                                    .shadow(4.dp, RoundedCornerShape(4.dp))
                                     .background(Color.White, RoundedCornerShape(4.dp))
-                                    .clickable {
-                                        mealList.remove(meal)
-                                        showRemoveMealDialog = false
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .clickable(
+                                        onClick = {
+                                            mealList.remove(meal)
+                                            showRemoveMealDialog = false
+                                        }
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -318,58 +319,24 @@ fun CalorieHomeScreen() {
                 editedMealName = ""
                 editedMealCalories = ""
             },
-            title = { Text(if (selectedMealToEdit == null) "Select meal to edit" else "Edit Meal") },
+            title = { Text("Edit Meal") },
             text = {
-                if (mealList.isEmpty()) {
-                    Text("No meals to edit.")
-                } else if (selectedMealToEdit == null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 350.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        mealList.forEach { meal ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
-                                    .shadow(4.dp, RoundedCornerShape(4.dp))
-                                    .background(Color.White, RoundedCornerShape(4.dp))
-                                    .clickable {
-                                        selectedMealToEdit = meal
-                                        editedMealName = meal.name
-                                        editedMealCalories = meal.calories.toString()
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "${meal.name}: ${meal.calories} Kcal",
-                                    fontSize = 18.sp,
-                                    lineHeight = 24.sp
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Column {
-                        OutlinedTextField(
-                            value = editedMealName,
-                            onValueChange = { editedMealName = it },
-                            label = { Text("Meal name") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = editedMealCalories,
-                            onValueChange = { editedMealCalories = it },
-                            label = { Text("Calories") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                Column {
+                    OutlinedTextField(
+                        value = editedMealName,
+                        onValueChange = { editedMealName = it },
+                        label = { Text("Meal name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = editedMealCalories,
+                        onValueChange = { editedMealCalories = it },
+                        label = { Text("Calories") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
