@@ -97,12 +97,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Data class Meal agora inclui as macros adicionais
 data class Meal(
     val name: String,
     val calories: Int,
     val protein: Int = 0,
     val carbs: Int = 0,
-    val fats: Int = 0
+    val fats: Int = 0,
+    val salt: Double = 0.0,
+    val fiber: Int = 0,
+    val polyols: Int = 0,
+    val starch: Int = 0
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,6 +124,11 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var mealProtein by remember { mutableStateOf("") }
     var mealCarbs by remember { mutableStateOf("") }
     var mealFats by remember { mutableStateOf("") }
+    // Estados para as macros adicionais
+    var mealSalt by remember { mutableStateOf("") }
+    var mealFiber by remember { mutableStateOf("") }
+    var mealPolyols by remember { mutableStateOf("") }
+    var mealStarch by remember { mutableStateOf("") }
 
     var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) }
     var editedMealName by remember { mutableStateOf("") }
@@ -126,6 +136,12 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var editedMealProtein by remember { mutableStateOf("") }
     var editedMealCarbs by remember { mutableStateOf("") }
     var editedMealFats by remember { mutableStateOf("") }
+    // Estados para as macros adicionais editadas
+    var editedMealSalt by remember { mutableStateOf("") }
+    var editedMealFiber by remember { mutableStateOf("") }
+    var editedMealPolyols by remember { mutableStateOf("") }
+    var editedMealStarch by remember { mutableStateOf("") }
+
 
     val mealList = remember { mutableStateListOf<Meal>() }
 
@@ -333,6 +349,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                             editedMealProtein = meal.protein.toString()
                                             editedMealCarbs = meal.carbs.toString()
                                             editedMealFats = meal.fats.toString()
+                                            editedMealSalt = meal.salt.toString() // Popula campos
+                                            editedMealFiber = meal.fiber.toString()
+                                            editedMealPolyols = meal.polyols.toString()
+                                            editedMealStarch = meal.starch.toString()
                                             showEditMealDialog = true
                                         }
                                     ),
@@ -357,6 +377,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                     if (meal.protein > 0) macrosText += "P: ${meal.protein}g "
                                     if (meal.carbs > 0) macrosText += "C: ${meal.carbs}g "
                                     if (meal.fats > 0) macrosText += "G: ${meal.fats}g "
+                                    if (meal.salt > 0.0) macrosText += "Salt: ${String.format("%.1f", meal.salt)}g "
+                                    if (meal.fiber > 0) macrosText += "Fiber: ${meal.fiber}g "
+                                    if (meal.polyols > 0) macrosText += "Polyols: ${meal.polyols}g "
+                                    if (meal.starch > 0) macrosText += "Starch: ${meal.starch}g"
 
                                     if (macrosText.isNotBlank()) {
                                         Text(
@@ -394,6 +418,45 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val FadedGreen = Color(0xFF6C9E6C)
     val FadedRed = Color(0xFFB36B6B)
 
+    // Reutilizável Composable para campos de entrada de macro
+    @Composable
+    fun MacroInputField(
+        value: String,
+        onValueChange: (String) -> Unit,
+        label: String,
+        keyboardType: KeyboardType = KeyboardType.Number,
+        isDouble: Boolean = false // Para lidar com Double (Sal)
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newValue -> // Use newValue aqui
+                if (keyboardType == KeyboardType.Number || isDouble) {
+                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                        onValueChange(newValue)
+                    }
+                } else {
+                    onValueChange(newValue) // Permite qualquer texto para outros tipos de teclado
+                }
+            },
+            label = { Text(label) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+
+
     if (showMealDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -403,6 +466,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                 mealProtein = ""
                 mealCarbs = ""
                 mealFats = ""
+                mealSalt = ""
+                mealFiber = ""
+                mealPolyols = ""
+                mealStarch = ""
             },
             confirmButton = {
                 val isConfirmEnabled = mealName.isNotBlank() && (mealCalories.toIntOrNull() ?: 0) > 0
@@ -413,9 +480,13 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         val protein = mealProtein.toIntOrNull() ?: 0
                         val carbs = mealCarbs.toIntOrNull() ?: 0
                         val fats = mealFats.toIntOrNull() ?: 0
+                        val salt = mealSalt.toDoubleOrNull() ?: 0.0
+                        val fiber = mealFiber.toIntOrNull() ?: 0
+                        val polyols = mealPolyols.toIntOrNull() ?: 0
+                        val starch = mealStarch.toIntOrNull() ?: 0
 
                         if (name.isNotBlank() && calories > 0) {
-                            mealList.add(Meal(name, calories, protein, carbs, fats))
+                            mealList.add(Meal(name, calories, protein, carbs, fats, salt, fiber, polyols, starch))
                         }
                         showMealDialog = false
                         mealName = ""
@@ -423,6 +494,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         mealProtein = ""
                         mealCarbs = ""
                         mealFats = ""
+                        mealSalt = ""
+                        mealFiber = ""
+                        mealPolyols = ""
+                        mealStarch = ""
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen),
                     enabled = isConfirmEnabled
@@ -439,6 +514,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         mealProtein = ""
                         mealCarbs = ""
                         mealFats = ""
+                        mealSalt = ""
+                        mealFiber = ""
+                        mealPolyols = ""
+                        mealStarch = ""
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
                 ) {
@@ -450,99 +529,15 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             },
             text = {
                 Column {
-                    OutlinedTextField(
-                        value = mealName,
-                        onValueChange = { mealName = it },
-                        label = { Text("Meal name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = mealCalories,
-                        onValueChange = { mealCalories = it },
-                        label = { Text("calories (Kcal)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = mealProtein,
-                        onValueChange = { mealProtein = it },
-                        label = { Text("Protein (g)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = mealCarbs,
-                        onValueChange = { mealCarbs = it },
-                        label = { Text("Carbohydrates (g)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = mealFats,
-                        onValueChange = { mealFats = it },
-                        label = { Text("Fats (g)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
+                    MacroInputField(value = mealName, onValueChange = { mealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
+                    MacroInputField(value = mealCalories, onValueChange = { mealCalories = it }, label = "calories (Kcal)")
+                    MacroInputField(value = mealProtein, onValueChange = { mealProtein = it }, label = "Protein (g)")
+                    MacroInputField(value = mealCarbs, onValueChange = { mealCarbs = it }, label = "Carbohydrates (g)")
+                    MacroInputField(value = mealFats, onValueChange = { mealFats = it }, label = "Fats (g)")
+                    MacroInputField(value = mealSalt, onValueChange = { mealSalt = it }, label = "Salt (g)", isDouble = true)
+                    MacroInputField(value = mealFiber, onValueChange = { mealFiber = it }, label = "Fiber (g)")
+                    MacroInputField(value = mealPolyols, onValueChange = { mealPolyols = it }, label = "Polyols (g)")
+                    MacroInputField(value = mealStarch, onValueChange = { mealStarch = it }, label = "Starch (g)")
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface
@@ -615,103 +610,23 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                 editedMealProtein = ""
                 editedMealCarbs = ""
                 editedMealFats = ""
+                editedMealSalt = ""
+                editedMealFiber = ""
+                editedMealPolyols = ""
+                editedMealStarch = ""
             },
             title = { Text("Edit Meal", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column {
-                    OutlinedTextField(
-                        value = editedMealName,
-                        onValueChange = { editedMealName = it },
-                        label = { Text("Meal name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = editedMealCalories,
-                        onValueChange = { editedMealCalories = it },
-                        label = { Text("Calories") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = editedMealProtein,
-                        onValueChange = { editedMealProtein = it },
-                        label = { Text("Protein (g)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = editedMealCarbs,
-                        onValueChange = { editedMealCarbs = it },
-                        label = { Text("Carbohydrates (g)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = editedMealFats,
-                        onValueChange = { editedMealFats = it },
-                        label = { Text("Fats (g)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
+                    MacroInputField(value = editedMealName, onValueChange = { editedMealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
+                    MacroInputField(value = editedMealCalories, onValueChange = { editedMealCalories = it }, label = "Calories")
+                    MacroInputField(value = editedMealProtein, onValueChange = { editedMealProtein = it }, label = "Protein (g)")
+                    MacroInputField(value = editedMealCarbs, onValueChange = { editedMealCarbs = it }, label = "Carbohydrates (g)")
+                    MacroInputField(value = editedMealFats, onValueChange = { editedMealFats = it }, label = "Fats (g)")
+                    MacroInputField(value = editedMealSalt, onValueChange = { editedMealSalt = it }, label = "Salt (g)", isDouble = true)
+                    MacroInputField(value = editedMealFiber, onValueChange = { editedMealFiber = it }, label = "Fiber (g)")
+                    MacroInputField(value = editedMealPolyols, onValueChange = { editedMealPolyols = it }, label = "Polyols (g)")
+                    MacroInputField(value = editedMealStarch, onValueChange = { editedMealStarch = it }, label = "Starch (g)")
                 }
             },
             confirmButton = {
@@ -726,9 +641,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                 val newProtein = editedMealProtein.toIntOrNull() ?: 0
                                 val newCarbs = editedMealCarbs.toIntOrNull() ?: 0
                                 val newFats = editedMealFats.toIntOrNull() ?: 0
+                                val newSalt = editedMealSalt.toDoubleOrNull() ?: 0.0
+                                val newFiber = editedMealFiber.toIntOrNull() ?: 0
+                                val newPolyols = editedMealPolyols.toIntOrNull() ?: 0
+                                val newStarch = editedMealStarch.toIntOrNull() ?: 0
+
 
                                 if (newName.isNotBlank() && newCalories > 0) {
-                                    mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats)
+                                    mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch)
                                 }
                             }
                             showEditMealDialog = false
@@ -738,6 +658,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                             editedMealProtein = ""
                             editedMealCarbs = ""
                             editedMealFats = ""
+                            editedMealSalt = ""
+                            editedMealFiber = ""
+                            editedMealPolyols = ""
+                            editedMealStarch = ""
                         },
                         colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen),
                         enabled = isSaveEnabled
@@ -755,6 +679,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     editedMealProtein = ""
                     editedMealCarbs = ""
                     editedMealFats = ""
+                    editedMealSalt = ""
+                    editedMealFiber = ""
+                    editedMealPolyols = ""
+                    editedMealStarch = ""
                 },
                     colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
                 ) {
@@ -771,6 +699,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         val totalProtein = mealList.sumOf { it.protein }
         val totalCarbs = mealList.sumOf { it.carbs }
         val totalFats = mealList.sumOf { it.fats }
+        val totalSalt = mealList.sumOf { it.salt }
+        val totalFiber = mealList.sumOf { it.fiber }
+        val totalPolyols = mealList.sumOf { it.polyols }
+        val totalStarch = mealList.sumOf { it.starch }
 
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -788,25 +720,49 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     Text(
                         "Total Calories: $totalCalories Kcal",
                         fontSize = 18.sp,
-                        lineHeight = 34.sp,
+                        lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         "Total Protein: $totalProtein g",
                         fontSize = 18.sp,
-                        lineHeight = 34.sp,
+                        lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         "Total Carbohydrates: $totalCarbs g",
                         fontSize = 18.sp,
-                        lineHeight = 34.sp,
+                        lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         "Total Fats: $totalFats g",
                         fontSize = 18.sp,
-                        lineHeight = 34.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Salt: ${String.format("%.1f", totalSalt)} g", // Formata para 1 casa decimal
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Fiber: $totalFiber g",
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Polyols: $totalPolyols g",
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Total Starch: $totalStarch g",
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
