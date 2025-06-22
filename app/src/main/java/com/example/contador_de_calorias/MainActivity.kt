@@ -42,7 +42,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange // Certifica-se de que TextRange está importado
+import androidx.compose.ui.text.TextRange
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,25 +102,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-data class Meal(
-    val name: String,
-    val calories: Int,
-    val protein: Int = 0,
-    val carbs: Int = 0,
-    val fats: Int = 0,
-    val salt: Double = 0.0,
-    val fiber: Int = 0,
-    val polyols: Int = 0,
-    val starch: Int = 0
-)
-
-data class UserInfo(
-    val dob: String = "",
-    val weight: String = "",
-    val height: String = "",
-    val activityLevel: String = ""
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -430,230 +412,18 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val FadedRed = Color(0xFFB36B6B)
     val FadedBlue = Color(0xFF6A8EAE)
 
-    @Composable
-    fun MacroInputField(
-        value: String,
-        onValueChange: (String) -> Unit,
-        label: String,
-        keyboardType: KeyboardType = KeyboardType.Number,
-        isDouble: Boolean = false
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { newValue ->
-                if (keyboardType == KeyboardType.Number || isDouble) {
-                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                        onValueChange(newValue)
-                    }
-                } else {
-                    onValueChange(newValue)
-                }
-            },
-            label = { Text(label) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-            )
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun InitialInfoDialog(onDismiss: () -> Unit, onInfoSubmitted: (UserInfo) -> Unit) {
-        // Altera dobInput para TextFieldValue para controlar a posição do cursor
-        var dobInput by remember { mutableStateOf(TextFieldValue(userInfo.dob)) }
-        var weightInput by remember { mutableStateOf(userInfo.weight) }
-        var heightInput by remember { mutableStateOf(userInfo.height) }
-        var activityExpanded by remember { mutableStateOf(false) }
-        val activityLevels = listOf("Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active")
-        var selectedActivityLevel by remember { mutableStateOf(userInfo.activityLevel.ifEmpty { activityLevels[0] }) }
-
-        val isDobValid = remember(dobInput.text) { // Usa dobInput.text para a validação
-            try {
-                if (dobInput.text.length == 10 && dobInput.text[2] == '/' && dobInput.text[5] == '/') {
-                    LocalDate.parse(dobInput.text, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    true
-                } else {
-                    false
-                }
-            } catch (e: DateTimeParseException) {
-                false
-            }
-        }
-        val isWeightValid = remember(weightInput) { weightInput.toIntOrNull() != null && weightInput.toInt() > 0 }
-        val isHeightValid = remember(heightInput) { heightInput.toIntOrNull() != null && heightInput.toInt() > 0 }
-        val isFormValid = isDobValid && isWeightValid && isHeightValid && selectedActivityLevel.isNotBlank()
-
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text(
-                    "Tell us about yourself",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    OutlinedTextField(
-                        value = dobInput,
-                        onValueChange = { newTextFieldValue ->
-                            val currentText = newTextFieldValue.text
-                            val digitsOnly = currentText.filter { it.isDigit() }
-                            var formattedText = ""
-                            var newCursorPosition = newTextFieldValue.selection.start
-
-                            // Lógica para adicionar as barras automaticamente e posicionar o cursor
-                            if (digitsOnly.length > 0) {
-                                formattedText += digitsOnly.substring(0, minOf(digitsOnly.length, 2))
-                                if (digitsOnly.length > 2) {
-                                    formattedText += "/" + digitsOnly.substring(2, minOf(digitsOnly.length, 4))
-                                }
-                                if (digitsOnly.length > 4) {
-                                    formattedText += "/" + digitsOnly.substring(4, minOf(digitsOnly.length, 8))
-                                }
-                            }
-
-                            // Ajusta a posição do cursor após a formatação
-                            // Caso o utilizador esteja a apagar, mantém a posição do cursor relativa
-                            if (newTextFieldValue.selection.start < dobInput.text.length) {
-                                newCursorPosition = newTextFieldValue.selection.start
-                            } else {
-                                // Caso contrário, coloca o cursor no final do texto formatado
-                                newCursorPosition = formattedText.length
-                                // Mas se uma barra foi inserida, move o cursor para depois da barra
-                                if (dobInput.text.length == 2 && formattedText.length == 3 && formattedText[2] == '/') {
-                                    newCursorPosition = 3
-                                } else if (dobInput.text.length == 5 && formattedText.length == 6 && formattedText[5] == '/') {
-                                    newCursorPosition = 6
-                                }
-                            }
-
-
-                            dobInput = TextFieldValue(
-                                text = formattedText.take(10), // Limita a 10 caracteres (DD/MM/YYYY)
-                                selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length)) // Garante que o cursor não sai dos limites
-                            )
-                        },
-                        label = { Text("Date of Birth (DD/MM/YYYY)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    )
-                    if (dobInput.text.isNotBlank() && !isDobValid) { // Usa dobInput.text
-                        Text("Invalid date format. Use DD/MM/YYYY.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    MacroInputField(
-                        value = weightInput,
-                        onValueChange = { weightInput = it },
-                        label = "Weight (kg)",
-                        keyboardType = KeyboardType.Number
-                    )
-                    if (weightInput.isNotBlank() && !isWeightValid) {
-                        Text("Please enter a valid weight.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    MacroInputField(
-                        value = heightInput,
-                        onValueChange = { heightInput = it },
-                        label = "Height (cm)",
-                        keyboardType = KeyboardType.Number
-                    )
-                    if (heightInput.isNotBlank() && !isHeightValid) {
-                        Text("Please enter a valid height.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    ExposedDropdownMenuBox(
-                        expanded = activityExpanded,
-                        onExpandedChange = { activityExpanded = !activityExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = selectedActivityLevel,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Activity Level") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = activityExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                        ExposedDropdownMenu(
-                            expanded = activityExpanded,
-                            onDismissRequest = { activityExpanded = false }
-                        ) {
-                            activityLevels.forEach { selectionOption ->
-                                DropdownMenuItem(
-                                    text = { Text(selectionOption) },
-                                    onClick = {
-                                        selectedActivityLevel = selectionOption
-                                        activityExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel)) // Usa dobInput.text
-                        onDismiss()
-                    },
-                    colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
-                    enabled = isFormValid
-                ) {
-                    Text("Continue")
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    }
-
+    // Exibe o pop-up de informações iniciais se showInitialInfoDialog for verdadeiro
     if (showInitialInfoDialog) {
         InitialInfoDialog(
             onDismiss = { /* Não permite fechar sem preencher */ },
             onInfoSubmitted = { info ->
                 userInfo = info
                 showInitialInfoDialog = false
-            }
+            },
+            // Passa os estados e eventos de atualização para o InitialInfoDialog
+            // dobInput e onDobInputChange são removidos daqui pois agora são geridos internamente no InitialInfoDialog
+            // para simplificar a passagem de estado, já que o InitialInfoDialog é self-contained para sua lógica de campos
+            initialUserInfo = userInfo // Passa o userInfo inicial para popular os campos
         )
     }
 
@@ -824,7 +594,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     MacroInputField(value = editedMealProtein, onValueChange = { editedMealProtein = it }, label = "Protein (g)")
                     MacroInputField(value = editedMealCarbs, onValueChange = { editedMealCarbs = it }, label = "Carbohydrates (g)")
                     MacroInputField(value = editedMealFats, onValueChange = { editedMealFats = it }, label = "Fats (g)")
-                    MacroInputField(value = editedMealSalt, onValueChange = { editedMealSalt = it }, label = "Salt (g)", isDouble = true)
+                    MacroInputField(value = editedMealSalt, onValueChange = { mealSalt = it }, label = "Salt (g)", isDouble = true)
                     MacroInputField(value = editedMealFiber, onValueChange = { editedMealFiber = it }, label = "Fiber (g)")
                     MacroInputField(value = editedMealPolyols, onValueChange = { editedMealPolyols = it }, label = "Polyols (g)")
                     MacroInputField(value = editedMealStarch, onValueChange = { editedMealStarch = it }, label = "Starch (g)")
