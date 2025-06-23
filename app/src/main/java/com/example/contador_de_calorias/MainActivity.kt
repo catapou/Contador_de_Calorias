@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -138,15 +139,12 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var showEditMealDialog by remember { mutableStateOf(false) }
     var showMacroSummaryDialog by remember { mutableStateOf(false) }
 
-    // Estado para controlar a exibição do diálogo de informações iniciais
+
     var showInitialInfoDialog by remember { mutableStateOf(true) }
-    // Estado para controlar a exibição do diálogo de IMC
     var showBMIDialog by remember { mutableStateOf(false) }
-    // Estado para armazenar as informações do utilizador
     var userInfo by remember { mutableStateOf(UserInfo()) }
-    // Estado para armazenar o objetivo de peso do utilizador
+    var showUserInfoDialog by remember { mutableStateOf(false) }
     var userWeightGoal by remember { mutableStateOf("") }
-    // Estado para armazenar as calorias recomendadas
     var recommendedCalories by remember { mutableStateOf<Int?>(null) }
 
 
@@ -186,14 +184,11 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Função para calcular a TMB (Taxa Metabólica Basal) - Equação de Mifflin-St Jeor (assumindo masculino por agora)
-    // O input de género seria necessário para um cálculo mais preciso
+
     fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int): Double {
-        // Equação de Mifflin-St Jeor para Homens
         return (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
     }
 
-    // Função para calcular o GET (Gasto Energético Total Diário) com base no nível de atividade
     fun calculateTDEE(bmr: Double, activityLevel: String): Int {
         val activityFactor = when (activityLevel) {
             "Sedentary" -> 1.2
@@ -201,17 +196,17 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             "Moderately Active" -> 1.55
             "Very Active" -> 1.725
             "Extra Active" -> 1.9
-            else -> 1.2 // Padrão para sedentário
+            else -> 1.2
         }
         return (bmr * activityFactor).roundToInt()
     }
 
-    // Função para calcular as calorias recomendadas com base no objetivo de peso
+
     fun getRecommendedCalories(tdee: Int, goal: String): Int {
         return when (goal) {
             "Maintain Weight" -> tdee
-            "Lose Weight" -> tdee - 500 // Objetivo de perder aprox. 0.5 kg/semana
-            "Gain Weight" -> tdee + 500 // Objetivo de ganhar aprox. 0.5 kg/semana
+            "Lose Weight" -> tdee - 500
+            "Gain Weight" -> tdee + 500
             else -> tdee
         }
     }
@@ -221,7 +216,17 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(screenWidth * 0.7f)) {
-                Text("Menu", modifier = Modifier.padding(16.dp), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Image(
+                    painter = painterResource(
+                        id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
+                        else R.drawable.logo_conta_calorias_sem_fundo_light
+                    ),
+                    contentDescription = "Calorie Log Logo",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .padding(16.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
                 Divider()
                 Row(
                     modifier = Modifier
@@ -237,7 +242,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         fontSize = 18.sp
                     )
                     Icon(
-                        imageVector = if (isDarkMode) Icons.Filled.NightsStay else Icons.Filled.WbSunny,
+                        imageVector = Icons.Filled.NightsStay,
                         contentDescription = if (isDarkMode) "Dark Mode" else "Light Mode",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -261,6 +266,30 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     Icon(
                         imageVector = Icons.Filled.Fastfood,
                         contentDescription = "Full Macro View",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showInitialInfoDialog = true
+                            showBMIDialog = false
+                            scope.launch { drawerState.close() }
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "User Info",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 18.sp
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "User Info",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -479,14 +508,13 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val FadedBlue = Color(0xFF6A8EAE)
 
 
-    // Exibe o pop-up de informações iniciais se showInitialInfoDialog for verdadeiro
+
     if (showInitialInfoDialog) {
         InitialInfoDialog(
-            onDismiss = { /* Não permite fechar sem preencher neste caso, mas a função é necessária */ },
+            onDismiss = { showInitialInfoDialog = false },
             onInfoSubmitted = { info ->
                 userInfo = info
 
-                // Lógica de cálculo do IMC
                 val weight = userInfo.weight.toDoubleOrNull()
                 val heightCm = userInfo.height.toDoubleOrNull()
                 val calculatedBmi = if (weight != null && heightCm != null && heightCm > 0) {
@@ -498,6 +526,22 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
                 showInitialInfoDialog = false
                 if (calculatedBmi != null) {
+                    val weightDouble = userInfo.weight.toDoubleOrNull() ?: 0.0
+                    val heightDouble = userInfo.height.toDoubleOrNull() ?: 0.0
+                    val dobParts = userInfo.dob.split("/")
+                    val age = if (dobParts.size == 3) {
+                        val birthYear = dobParts[2].toIntOrNull()
+                        if (birthYear != null) LocalDate.now().year - birthYear else 0
+                    } else 0
+
+                    if (userWeightGoal.isNotBlank() && weightDouble > 0 && heightDouble > 0 && age > 0) {
+                        val bmr = calculateBMR(weightDouble, heightDouble, age)
+                        val tdee = calculateTDEE(bmr, userInfo.activityLevel)
+                        recommendedCalories = getRecommendedCalories(tdee, userWeightGoal)
+                        calorieInput = recommendedCalories.toString()
+                    } else {
+                        recommendedCalories = null
+                    }
                     showBMIDialog = true
                 }
             },
@@ -505,9 +549,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         )
     }
 
-    // Exibe o pop-up de IMC se showBMIDialog for verdadeiro
     if (showBMIDialog) {
-        // Recalcula o IMC antes de exibir o diálogo para garantir que é o mais recente
         val weight = userInfo.weight.toDoubleOrNull()
         val heightCm = userInfo.height.toDoubleOrNull()
         val currentBmi = if (weight != null && heightCm != null && heightCm > 0) {
@@ -519,14 +561,13 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
         BMIDialog(
             userInfo = userInfo,
-            bmi = currentBmi, // Passa o IMC calculado
-            recommendedCalories = recommendedCalories, // Passa as calorias recomendadas
+            bmi = currentBmi,
+            recommendedCalories = recommendedCalories,
             selectedGoal = userWeightGoal,
-            onDismiss = { showBMIDialog = false }, // Permite fechar o diálogo de IMC
+            onDismiss = { showBMIDialog = false },
             onGoalSelected = { goal ->
-                userWeightGoal = goal // Armazena o objetivo de peso selecionado
+                userWeightGoal = goal
 
-                // Calcula as calorias recomendadas com base no objetivo selecionado
                 val weightDouble = userInfo.weight.toDoubleOrNull() ?: 0.0
                 val heightDouble = userInfo.height.toDoubleOrNull() ?: 0.0
                 val dobParts = userInfo.dob.split("/")
@@ -539,7 +580,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     val bmr = calculateBMR(weightDouble, heightDouble, age)
                     val tdee = calculateTDEE(bmr, userInfo.activityLevel)
                     recommendedCalories = getRecommendedCalories(tdee, goal)
-                    // Pré-preenche o calorieInput com as calorias recomendadas
                     calorieInput = recommendedCalories.toString()
                 } else {
                     recommendedCalories = null
@@ -733,9 +773,9 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                 val newCarbs = editedMealCarbs.toIntOrNull() ?: 0
                                 val newFats = editedMealFats.toIntOrNull() ?: 0
                                 val newSalt = editedMealSalt.toDoubleOrNull() ?: 0.0
-                                val newFiber = editedMealFiber.toIntOrNull() ?: 0
-                                val newPolyols = editedMealPolyols.toIntOrNull() ?: 0
-                                val newStarch = editedMealStarch.toIntOrNull() ?: 0
+                                val newFiber = mealList[index].fiber
+                                val newPolyols = mealList[index].polyols
+                                val newStarch = mealList[index].starch
 
                                 if (newName.isNotBlank() && newCalories > 0) {
                                     mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch)
