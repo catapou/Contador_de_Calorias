@@ -1,6 +1,5 @@
 package com.example.contador_de_calorias
 
-// Importa todas as funções e classes da UI separada
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -69,6 +68,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,6 +146,9 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var userInfo by remember { mutableStateOf(UserInfo()) }
     // Estado para armazenar o objetivo de peso do utilizador
     var userWeightGoal by remember { mutableStateOf("") }
+    // Estado para armazenar as calorias recomendadas
+    var recommendedCalories by remember { mutableStateOf<Int?>(null) }
+
 
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
@@ -181,6 +185,37 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    // Função para calcular a TMB (Taxa Metabólica Basal) - Equação de Mifflin-St Jeor (assumindo masculino por agora)
+    // O input de género seria necessário para um cálculo mais preciso
+    fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int): Double {
+        // Equação de Mifflin-St Jeor para Homens
+        return (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
+    }
+
+    // Função para calcular o GET (Gasto Energético Total Diário) com base no nível de atividade
+    fun calculateTDEE(bmr: Double, activityLevel: String): Int {
+        val activityFactor = when (activityLevel) {
+            "Sedentary" -> 1.2
+            "Lightly Active" -> 1.375
+            "Moderately Active" -> 1.55
+            "Very Active" -> 1.725
+            "Extra Active" -> 1.9
+            else -> 1.2 // Padrão para sedentário
+        }
+        return (bmr * activityFactor).roundToInt()
+    }
+
+    // Função para calcular as calorias recomendadas com base no objetivo de peso
+    fun getRecommendedCalories(tdee: Int, goal: String): Int {
+        return when (goal) {
+            "Maintain Weight" -> tdee
+            "Lose Weight" -> tdee - 500 // Objetivo de perder aprox. 0.5 kg/semana
+            "Gain Weight" -> tdee + 500 // Objetivo de ganhar aprox. 0.5 kg/semana
+            else -> tdee
+        }
+    }
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -439,9 +474,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         }
     }
 
-    // Cores reutilizáveis, se ainda não estiverem em Ui_Elements
-    // Estas val são duplicadas, mas servem para fins de demonstração
-    // Em um projeto real, seriam acessadas diretamente de Ui_Elements
     val FadedGreen = Color(0xFF6C9E6C)
     val FadedRed = Color(0xFFB36B6B)
     val FadedBlue = Color(0xFF6A8EAE)
@@ -454,7 +486,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             onInfoSubmitted = { info ->
                 userInfo = info
 
-                // Lógica de cálculo do IMC movida para MainActivity
+                // Lógica de cálculo do IMC
                 val weight = userInfo.weight.toDoubleOrNull()
                 val heightCm = userInfo.height.toDoubleOrNull()
                 val calculatedBmi = if (weight != null && heightCm != null && heightCm > 0) {
@@ -488,11 +520,30 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         BMIDialog(
             userInfo = userInfo,
             bmi = currentBmi, // Passa o IMC calculado
+            recommendedCalories = recommendedCalories, // Passa as calorias recomendadas
+            selectedGoal = userWeightGoal,
             onDismiss = { showBMIDialog = false }, // Permite fechar o diálogo de IMC
             onGoalSelected = { goal ->
                 userWeightGoal = goal // Armazena o objetivo de peso selecionado
-                showBMIDialog = false // Fecha o diálogo de IMC
-                // Poderá adicionar lógica aqui para ajustar o dailyLimit com base no objetivo de peso
+
+                // Calcula as calorias recomendadas com base no objetivo selecionado
+                val weightDouble = userInfo.weight.toDoubleOrNull() ?: 0.0
+                val heightDouble = userInfo.height.toDoubleOrNull() ?: 0.0
+                val dobParts = userInfo.dob.split("/")
+                val age = if (dobParts.size == 3) {
+                    val birthYear = dobParts[2].toIntOrNull()
+                    if (birthYear != null) LocalDate.now().year - birthYear else 0
+                } else 0
+
+                if (weightDouble > 0 && heightDouble > 0 && age > 0) {
+                    val bmr = calculateBMR(weightDouble, heightDouble, age)
+                    val tdee = calculateTDEE(bmr, userInfo.activityLevel)
+                    recommendedCalories = getRecommendedCalories(tdee, goal)
+                    // Pré-preenche o calorieInput com as calorias recomendadas
+                    calorieInput = recommendedCalories.toString()
+                } else {
+                    recommendedCalories = null
+                }
             }
         )
     }

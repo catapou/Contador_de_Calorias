@@ -42,12 +42,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 
 
-// Cores reutilizáveis
+// Reusable colors
 val FadedGreen = Color(0xFF6C9E6C)
 val FadedRed = Color(0xFFB36B6B)
 val FadedBlue = Color(0xFF6A8EAE)
 
-// Data class Meal
+// Meal data class
 data class Meal(
     val name: String,
     val calories: Int,
@@ -60,7 +60,7 @@ data class Meal(
     val starch: Int = 0
 )
 
-// Data class para informações do utilizador
+// User information data class
 data class UserInfo(
     val dob: String = "",
     val weight: String = "",
@@ -68,7 +68,7 @@ data class UserInfo(
     val activityLevel: String = ""
 )
 
-// Campo de entrada de macro reutilizável
+// Reusable macro input field
 @Composable
 fun MacroInputField(
     value: String,
@@ -106,15 +106,15 @@ fun MacroInputField(
     Spacer(modifier = Modifier.height(12.dp))
 }
 
-// Pop-up de informações iniciais
+// Initial information pop-up
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InitialInfoDialog(
     onDismiss: () -> Unit,
     onInfoSubmitted: (UserInfo) -> Unit,
-    initialUserInfo: UserInfo // Recebe o estado inicial
+    initialUserInfo: UserInfo // Receives initial state
 ) {
-    // dobInput agora é TextFieldValue para controlar o cursor
+    // dobInput is now TextFieldValue to control the cursor
     var dobInput by remember { mutableStateOf(TextFieldValue(initialUserInfo.dob)) }
     var weightInput by remember { mutableStateOf(initialUserInfo.weight) }
     var heightInput by remember { mutableStateOf(initialUserInfo.height) }
@@ -158,7 +158,7 @@ fun InitialInfoDialog(
                         var formattedText = ""
                         var newCursorPosition = newTextFieldValue.selection.start
 
-                        // Lógica para adicionar as barras automaticamente e posicionar o cursor
+                        // Logic to automatically add slashes and position the cursor
                         if (digitsOnly.length > 0) {
                             formattedText += digitsOnly.substring(0, minOf(digitsOnly.length, 2))
                             if (digitsOnly.length > 2) {
@@ -169,14 +169,14 @@ fun InitialInfoDialog(
                             }
                         }
 
-                        // Ajusta a posição do cursor após a formatação
-                        // Caso o utilizador esteja a apagar, mantém a posição do cursor relativa
+                        // Adjusts cursor position after formatting
+                        // If the user is deleting, keeps the cursor position relative
                         if (newTextFieldValue.selection.start < dobInput.text.length) {
                             newCursorPosition = newTextFieldValue.selection.start
                         } else {
-                            // Caso contrário, coloca o cursor no final do texto formatado
+                            // Otherwise, puts the cursor at the end of the formatted text
                             newCursorPosition = formattedText.length
-                            // Mas se uma barra foi inserida, move o cursor para depois da barra
+                            // But if a slash was inserted, moves the cursor after the slash
                             if (dobInput.text.length == 2 && formattedText.length == 3 && formattedText[2] == '/') {
                                 newCursorPosition = 3
                             } else if (dobInput.text.length == 5 && formattedText.length == 6 && formattedText[5] == '/') {
@@ -186,8 +186,8 @@ fun InitialInfoDialog(
 
 
                         dobInput = TextFieldValue(
-                            text = formattedText.take(10), // Limita a 10 caracteres (DD/MM/YYYY)
-                            selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length)) // Garante que o cursor não sai dos limites
+                            text = formattedText.take(10), // Limits to 10 characters (DD/MM/YYYY)
+                            selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length)) // Ensures cursor stays within bounds
                         )
                     },
                     label = { Text("Date of Birth (DD/MM/YYYY)") },
@@ -291,16 +291,18 @@ fun InitialInfoDialog(
     )
 }
 
-// Novo Composable para o diálogo de IMC e objetivo de peso
+// Composable for BMI and weight goal dialog
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BMIDialog(
     userInfo: UserInfo,
-    bmi: Double?, // IMC já calculado é passado como parâmetro
+    bmi: Double?, // BMI already calculated is passed as a parameter
+    recommendedCalories: Int?, // Recommended calories passed as a parameter
+    selectedGoal: String, // Receive selected goal as a parameter
     onDismiss: () -> Unit,
-    onGoalSelected: (String) -> Unit // Callback para o objetivo selecionado
+    onGoalSelected: (String) -> Unit // Callback for selected goal
 ) {
-    var selectedGoal by remember { mutableStateOf("") }
+    // selectedGoal is now received as a parameter, no local mutableStateOf needed
     val goals = listOf("Maintain Weight", "Lose Weight", "Gain Weight")
 
     AlertDialog(
@@ -317,7 +319,7 @@ fun BMIDialog(
             Column {
                 if (bmi != null) {
                     Text(
-                        "Your BMI: ${String.format("%.2f", bmi)}", // Formata o IMC para 2 casas decimais
+                        "Your BMI: ${String.format("%.2f", bmi)}", // Formats BMI to 2 decimal places
                         fontSize = 18.sp,
                         lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
@@ -355,29 +357,37 @@ fun BMIDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { selectedGoal = goal }
+                            .clickable { onGoalSelected(goal) } // Passes the selected goal immediately
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = (selectedGoal == goal),
-                            onClick = { selectedGoal = goal }
+                            selected = (selectedGoal == goal), // Now compares against the passed parameter
+                            onClick = { onGoalSelected(goal) } // Passes the selected goal immediately
                         )
                         Text(goal, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
                     }
+                }
+
+                if (recommendedCalories != null && selectedGoal.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Recommended daily calories for ${selectedGoal.lowercase()}: ${recommendedCalories} Kcal",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    onGoalSelected(selectedGoal)
-                    onDismiss()
-                },
+                onClick = onDismiss, // Just dismisses, goal is handled by radio button click
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
-                enabled = selectedGoal.isNotBlank() // Habilita o botão apenas se um objetivo for selecionado
+                enabled = true // Always enabled to dismiss
             ) {
-                Text("Continue")
+                Text("OK")
             }
         },
         containerColor = MaterialTheme.colorScheme.surface
@@ -385,7 +395,7 @@ fun BMIDialog(
 }
 
 
-// Diálogo de resumo de macros
+// Macro summary dialog
 @Composable
 fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
     val totalCalories = mealList.sumOf { it.calories }
