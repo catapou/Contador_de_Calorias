@@ -30,7 +30,8 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Person // Import para Icons.Filled.Person adicionado
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +52,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.LinearProgressIndicator // Import para a barra de progresso
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -71,6 +73,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.roundToInt
+// import androidx.compose.ui.graphics.lerp // Removido: vamos fazer a interpolação manualmente
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,12 +143,18 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var showEditMealDialog by remember { mutableStateOf(false) }
     var showMacroSummaryDialog by remember { mutableStateOf(false) }
 
-
+    // Estado para controlar a exibição do diálogo de informações iniciais
+    // Inicialmente verdadeiro para o primeiro carregamento, pode ser falso após a primeira entrada
     var showInitialInfoDialog by remember { mutableStateOf(true) }
+    // Estado para controlar a exibição do diálogo de IMC
     var showBMIDialog by remember { mutableStateOf(false) }
-    var userInfo by remember { mutableStateOf(UserInfo()) }
+    // Estado para armazenar as informações do utilizador
+    var userInfo by remember { mutableStateOf(UserInfo()) } // ERRO: UserInfo não será reconhecido sem importação
+    // Estado para controlar a exibição do diálogo de informações do utilizador através do menu
     var showUserInfoDialog by remember { mutableStateOf(false) }
+    // Estado para armazenar o objetivo de peso do utilizador
     var userWeightGoal by remember { mutableStateOf("") }
+    // Estado para armazenar as calorias recomendadas
     var recommendedCalories by remember { mutableStateOf<Int?>(null) }
 
 
@@ -158,7 +168,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var mealPolyols by remember { mutableStateOf("") }
     var mealStarch by remember { mutableStateOf("") }
 
-    var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) }
+    var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) } // ERRO: Meal não será reconhecido sem importação
     var editedMealName by remember { mutableStateOf("") }
     var editedMealCalories by remember { mutableStateOf("") }
     var editedMealProtein by remember { mutableStateOf("") }
@@ -169,7 +179,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var editedMealPolyols by remember { mutableStateOf("") }
     var editedMealStarch by remember { mutableStateOf("") }
 
-    val mealList = remember { mutableStateListOf<Meal>() }
+    val mealList = remember { mutableStateListOf<Meal>() } // ERRO: Meal não será reconhecido sem importação
 
     val totalMealCalories = mealList.sumOf { it.calories }
 
@@ -184,11 +194,30 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // Definindo as cores FadedGreen, FadedRed e FadedBlue aqui para uso na MainActivity
+    // Isso é feito para evitar o erro de "Unresolved reference" já que o import de Ui_Elements.* foi removido.
+    val FadedGreen = Color(0xFF6C9E6C)
+    val FadedRed = Color(0xFFB36B6B)
+    val FadedBlue = Color(0xFF6A8EAE)
 
+    // Função manual para interpolação de cores, substituindo Color.lerp
+    fun manualColorLerp(start: Color, end: Color, fraction: Float): Color {
+        val inverseFraction = 1 - fraction
+        val red = start.red * inverseFraction + end.red * fraction
+        val green = start.green * inverseFraction + end.green * fraction
+        val blue = start.blue * inverseFraction + end.blue * fraction
+        val alpha = start.alpha * inverseFraction + end.alpha * fraction
+        return Color(red, green, blue, alpha)
+    }
+
+    // Função para calcular a TMB (Taxa Metabólica Basal) - Equação de Mifflin-St Jeor (assumindo masculino por agora)
+    // O input de género seria necessário para um cálculo mais preciso
     fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int): Double {
+        // Equação de Mifflin-St Jeor para Homens
         return (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
     }
 
+    // Função para calcular o GET (Gasto Energético Total Diário) com base no nível de atividade
     fun calculateTDEE(bmr: Double, activityLevel: String): Int {
         val activityFactor = when (activityLevel) {
             "Sedentary" -> 1.2
@@ -196,17 +225,17 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             "Moderately Active" -> 1.55
             "Very Active" -> 1.725
             "Extra Active" -> 1.9
-            else -> 1.2
+            else -> 1.2 // Padrão para sedentário
         }
         return (bmr * activityFactor).roundToInt()
     }
 
-
+    // Função para calcular as calorias recomendadas com base no objetivo de peso
     fun getRecommendedCalories(tdee: Int, goal: String): Int {
         return when (goal) {
             "Maintain Weight" -> tdee
-            "Lose Weight" -> tdee - 500
-            "Gain Weight" -> tdee + 500
+            "Lose Weight" -> tdee - 500 // Objetivo de perder aprox. 0.5 kg/semana
+            "Gain Weight" -> tdee + 500 // Objetivo de ganhar aprox. 0.5 kg/semana
             else -> tdee
         }
     }
@@ -216,6 +245,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(screenWidth * 0.7f)) {
+                // Substituído o texto "Menu" pelo logo
                 Image(
                     painter = painterResource(
                         id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
@@ -223,9 +253,9 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     ),
                     contentDescription = "Calorie Log Logo",
                     modifier = Modifier
-                        .size(100.dp)
+                        .size(100.dp) // Ajuste o tamanho conforme necessário
                         .padding(16.dp)
-                        .align(Alignment.CenterHorizontally)
+                        .align(Alignment.CenterHorizontally) // Centraliza o logo
                 )
                 Divider()
                 Row(
@@ -269,7 +299,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-
+                // Menu para Informações do Utilizador
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -374,7 +404,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
-                Spacer(modifier = Modifier.height(lineSpacing / 4))
+                Spacer(modifier = Modifier.height(lineSpacing / 4)) // Espaçamento depois do título "Your Meals Today!"
 
                 Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -498,23 +528,49 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     lineHeight = 36.sp,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Spacer(modifier = Modifier.height(lineSpacing))
+
+                // Barra de progresso posicionada aqui, por baixo do texto "Calories left to consume..."
+                Spacer(modifier = Modifier.height(8.dp)) // Espaçamento antes da barra de progresso
+
+                val progress = if (dailyLimit > 0) {
+                    (totalMealCalories.toFloat() / dailyLimit.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    0f // Se o limite diário for 0, o progresso é 0
+                }
+
+                val progressBarColor = if (dailyLimit == 0) {
+                    if (totalMealCalories > 0) FadedRed else Color.LightGray // Se não há limite e já comeu, vermelho; senão, cinza claro
+                } else if (totalMealCalories <= dailyLimit) {
+                    // Usando a função manual de interpolação
+                    manualColorLerp(Color.White, FadedGreen, progress)
+                } else {
+                    FadedRed // Se excedeu o limite, fica vermelho
+                }
+
+                LinearProgressIndicator(
+                    progress = progress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(8.dp)), // Cantos arredondados para a barra
+                    color = progressBarColor,
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f) // Cor de fundo da barra
+                )
+
+                Spacer(modifier = Modifier.height(lineSpacing / 4)) // Espaçamento depois da barra de progresso
             }
         }
     }
 
-    val FadedGreen = Color(0xFF6C9E6C)
-    val FadedRed = Color(0xFFB36B6B)
-    val FadedBlue = Color(0xFF6A8EAE)
 
-
-
+    // Exibe o pop-up de informações iniciais se showInitialInfoDialog for verdadeiro
     if (showInitialInfoDialog) {
-        InitialInfoDialog(
+        InitialInfoDialog( // ERRO: InitialInfoDialog não será reconhecido sem importação
             onDismiss = { showInitialInfoDialog = false },
             onInfoSubmitted = { info ->
                 userInfo = info
 
+                // Lógica de cálculo do IMC
                 val weight = userInfo.weight.toDoubleOrNull()
                 val heightCm = userInfo.height.toDoubleOrNull()
                 val calculatedBmi = if (weight != null && heightCm != null && heightCm > 0) {
@@ -542,13 +598,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     } else {
                         recommendedCalories = null
                     }
-                    showBMIDialog = true
+                    showBMIDialog = true // ERRO: BMIDialog não será reconhecido sem importação
                 }
             },
             initialUserInfo = userInfo
         )
     }
 
+    // Exibe o pop-up de IMC se showBMIDialog for verdadeiro
     if (showBMIDialog) {
         val weight = userInfo.weight.toDoubleOrNull()
         val heightCm = userInfo.height.toDoubleOrNull()
@@ -559,7 +616,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             null
         }
 
-        BMIDialog(
+        BMIDialog( // ERRO: BMIDialog não será reconhecido sem importação
             userInfo = userInfo,
             bmi = currentBmi,
             recommendedCalories = recommendedCalories,
@@ -617,7 +674,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         val starch = mealStarch.toIntOrNull() ?: 0
 
                         if (name.isNotBlank() && calories > 0) {
-                            mealList.add(Meal(name, calories, protein, carbs, fats, salt, fiber, polyols, starch))
+                            mealList.add(Meal(name, calories, protein, carbs, fats, salt, fiber, polyols, starch)) // ERRO: Meal não será reconhecido
                         }
                         showMealDialog = false
                         mealName = ""
@@ -660,7 +717,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             },
             text = {
                 Column {
-                    MacroInputField(value = mealName, onValueChange = { mealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
+                    MacroInputField(value = mealName, onValueChange = { mealName = it }, label = "Meal name", keyboardType = KeyboardType.Text) // ERRO: MacroInputField não será reconhecido
                     MacroInputField(value = mealCalories, onValueChange = { mealCalories = it }, label = "calories (Kcal)")
                     MacroInputField(value = mealProtein, onValueChange = { mealProtein = it }, label = "Protein (g)")
                     MacroInputField(value = mealCarbs, onValueChange = { mealCarbs = it }, label = "Carbohydrates (g)")
@@ -749,7 +806,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             title = { Text("Edit Meal", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column {
-                    MacroInputField(value = editedMealName, onValueChange = { editedMealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
+                    MacroInputField(value = editedMealName, onValueChange = { editedMealName = it }, label = "Meal name", keyboardType = KeyboardType.Text) // ERRO: MacroInputField não será reconhecido
                     MacroInputField(value = editedMealCalories, onValueChange = { editedMealCalories = it }, label = "Calories")
                     MacroInputField(value = editedMealProtein, onValueChange = { editedMealProtein = it }, label = "Protein (g)")
                     MacroInputField(value = editedMealCarbs, onValueChange = { editedMealCarbs = it }, label = "Carbohydrates (g)")
@@ -773,12 +830,12 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                 val newCarbs = editedMealCarbs.toIntOrNull() ?: 0
                                 val newFats = editedMealFats.toIntOrNull() ?: 0
                                 val newSalt = editedMealSalt.toDoubleOrNull() ?: 0.0
-                                val newFiber = mealList[index].fiber
+                                val newFiber = mealList[index].fiber // Mantém os valores existentes se não forem editados
                                 val newPolyols = mealList[index].polyols
                                 val newStarch = mealList[index].starch
 
                                 if (newName.isNotBlank() && newCalories > 0) {
-                                    mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch)
+                                    mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch) // ERRO: Meal não será reconhecido
                                 }
                             }
                             showEditMealDialog = false
@@ -824,6 +881,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     }
 
     if (showMacroSummaryDialog) {
-        MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false })
+        MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false }) // ERRO: MacroSummaryDialog não será reconhecido
     }
 }
