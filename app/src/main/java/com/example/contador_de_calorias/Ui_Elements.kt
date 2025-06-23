@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,12 +42,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 
 
-// Reusable colors
+
 val FadedGreen = Color(0xFF6C9E6C)
 val FadedRed = Color(0xFFB36B6B)
 val FadedBlue = Color(0xFF6A8EAE)
 
-// Meal data class
+
 data class Meal(
     val name: String,
     val calories: Int,
@@ -61,16 +60,16 @@ data class Meal(
     val starch: Int = 0
 )
 
-// User information data class
+
 data class UserInfo(
     val dob: String = "",
     val weight: String = "",
     val height: String = "",
     val activityLevel: String = "",
-    val gender: String = "" // Adicionado o campo gender
+    val gender: String = ""
 )
 
-// Reusable macro input field
+
 @Composable
 fun MacroInputField(
     value: String,
@@ -108,22 +107,21 @@ fun MacroInputField(
     Spacer(modifier = Modifier.height(12.dp))
 }
 
-// Initial information pop-up
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InitialInfoDialog(
     onDismiss: () -> Unit,
     onInfoSubmitted: (UserInfo) -> Unit,
-    initialUserInfo: UserInfo // Receives initial state
+    initialUserInfo: UserInfo
 ) {
-    // dobInput is now TextFieldValue to control the cursor
     var dobInput by remember { mutableStateOf(TextFieldValue(initialUserInfo.dob)) }
     var weightInput by remember { mutableStateOf(initialUserInfo.weight) }
     var heightInput by remember { mutableStateOf(initialUserInfo.height) }
     var activityExpanded by remember { mutableStateOf(false) }
     val activityLevels = listOf("Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active")
     var selectedActivityLevel by remember { mutableStateOf(initialUserInfo.activityLevel.ifEmpty { activityLevels[0] }) }
-    var selectedGender by remember { mutableStateOf(initialUserInfo.gender) } // Novo estado para o sexo
+    var selectedGender by remember { mutableStateOf(initialUserInfo.gender) }
 
     val isDobValid = remember(dobInput.text) {
         try {
@@ -139,7 +137,7 @@ fun InitialInfoDialog(
     }
     val isWeightValid = remember(weightInput) { weightInput.toIntOrNull() != null && weightInput.toInt() > 0 }
     val isHeightValid = remember(heightInput) { heightInput.toIntOrNull() != null && heightInput.toInt() > 0 }
-    val isFormValid = isDobValid && isWeightValid && isHeightValid && selectedActivityLevel.isNotBlank() && selectedGender.isNotBlank() // Valida o sexo também
+    val isFormValid = isDobValid && isWeightValid && isHeightValid && selectedActivityLevel.isNotBlank() && selectedGender.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -161,7 +159,6 @@ fun InitialInfoDialog(
                         var formattedText = ""
                         var newCursorPosition = newTextFieldValue.selection.start
 
-                        // Logic to automatically add slashes and position the cursor
                         if (digitsOnly.length > 0) {
                             formattedText += digitsOnly.substring(0, minOf(digitsOnly.length, 2))
                             if (digitsOnly.length > 2) {
@@ -172,14 +169,10 @@ fun InitialInfoDialog(
                             }
                         }
 
-                        // Adjusts cursor position after formatting
-                        // If the user is deleting, keeps the cursor position relative
                         if (newTextFieldValue.selection.start < dobInput.text.length) {
                             newCursorPosition = newTextFieldValue.selection.start
                         } else {
-                            // Otherwise, puts the cursor at the end of the formatted text
                             newCursorPosition = formattedText.length
-                            // But if a slash was inserted, moves the cursor after the slash
                             if (dobInput.text.length == 2 && formattedText.length == 3 && formattedText[2] == '/') {
                                 newCursorPosition = 3
                             } else if (dobInput.text.length == 5 && formattedText.length == 6 && formattedText[5] == '/') {
@@ -189,8 +182,8 @@ fun InitialInfoDialog(
 
 
                         dobInput = TextFieldValue(
-                            text = formattedText.take(10), // Limits to 10 characters (DD/MM/YYYY)
-                            selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length)) // Ensures cursor stays within bounds
+                            text = formattedText.take(10),
+                            selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length))
                         )
                     },
                     label = { Text("Date of Birth (DD/MM/YYYY)") },
@@ -277,7 +270,6 @@ fun InitialInfoDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Adicionar a seleção de sexo
                 Text(
                     "Gender",
                     fontSize = 18.sp,
@@ -286,7 +278,7 @@ fun InitialInfoDialog(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround // Para espaçar os botões
+                    horizontalArrangement = Arrangement.SpaceAround
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { selectedGender = "Man" }) {
                         RadioButton(
@@ -312,7 +304,7 @@ fun InitialInfoDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel, selectedGender)) // Passa o sexo
+                    onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel, selectedGender))
                     onDismiss()
                 },
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
@@ -325,18 +317,16 @@ fun InitialInfoDialog(
     )
 }
 
-// Composable for BMI and weight goal dialog
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BMIDialog(
     userInfo: UserInfo,
-    bmi: Double?, // BMI already calculated is passed as a parameter
-    recommendedCalories: Int?, // Recommended calories passed as a parameter
-    selectedGoal: String, // Receive selected goal as a parameter
+    bmi: Double?,
+    recommendedCalories: Int?,
+    selectedGoal: String,
     onDismiss: () -> Unit,
-    onGoalSelected: (String) -> Unit // Callback for selected goal
+    onGoalSelected: (String) -> Unit
 ) {
-    // selectedGoal is now received as a parameter, no local mutableStateOf needed
     val goals = listOf("Maintain Weight", "Lose Weight", "Gain Weight")
 
     AlertDialog(
@@ -353,7 +343,7 @@ fun BMIDialog(
             Column {
                 if (bmi != null) {
                     Text(
-                        "Your BMI: ${String.format("%.2f", bmi)}", // Formats BMI to 2 decimal places
+                        "Your BMI: ${String.format("%.2f", bmi)}",
                         fontSize = 18.sp,
                         lineHeight = 24.sp,
                         color = MaterialTheme.colorScheme.onSurface
@@ -391,13 +381,13 @@ fun BMIDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onGoalSelected(goal) } // Passes the selected goal immediately
+                            .clickable { onGoalSelected(goal) }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = (selectedGoal == goal), // Now compares against the passed parameter
-                            onClick = { onGoalSelected(goal) } // Passes the selected goal immediately
+                            selected = (selectedGoal == goal),
+                            onClick = { onGoalSelected(goal) }
                         )
                         Text(goal, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
                     }
@@ -417,9 +407,9 @@ fun BMIDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = onDismiss, // Just dismisses, goal is handled by radio button click
+                onClick = onDismiss,
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
-                enabled = selectedGoal.isNotBlank() // O botão "OK" só é habilitado se uma meta for selecionada
+                enabled = selectedGoal.isNotBlank()
             ) {
                 Text("OK")
             }
