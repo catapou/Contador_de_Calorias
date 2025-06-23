@@ -35,7 +35,12 @@ import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
-import androidx.compose.foundation.text.KeyboardOptions // Importação para KeyboardOptions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.RadioButton
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+
 
 // Cores reutilizáveis
 val FadedGreen = Color(0xFF6C9E6C)
@@ -285,6 +290,100 @@ fun InitialInfoDialog(
         containerColor = MaterialTheme.colorScheme.surface
     )
 }
+
+// Novo Composable para o diálogo de IMC e objetivo de peso
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BMIDialog(
+    userInfo: UserInfo,
+    bmi: Double?, // IMC já calculado é passado como parâmetro
+    onDismiss: () -> Unit,
+    onGoalSelected: (String) -> Unit // Callback para o objetivo selecionado
+) {
+    var selectedGoal by remember { mutableStateOf("") }
+    val goals = listOf("Maintain Weight", "Lose Weight", "Gain Weight")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Your BMI & Goal",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                if (bmi != null) {
+                    Text(
+                        "Your BMI: ${String.format("%.2f", bmi)}", // Formata o IMC para 2 casas decimais
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        when {
+                            bmi < 18.5 -> "Underweight"
+                            bmi >= 18.5 && bmi < 24.9 -> "Normal weight"
+                            bmi >= 25 && bmi < 29.9 -> "Overweight"
+                            else -> "Obese"
+                        },
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                } else {
+                    Text(
+                        "Could not calculate BMI. Please ensure weight and height are valid.",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    "What is your weight goal?",
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                goals.forEach { goal ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedGoal = goal }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (selectedGoal == goal),
+                            onClick = { selectedGoal = goal }
+                        )
+                        Text(goal, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onGoalSelected(selectedGoal)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
+                enabled = selectedGoal.isNotBlank() // Habilita o botão apenas se um objetivo for selecionado
+            ) {
+                Text("Continue")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
 
 // Diálogo de resumo de macros
 @Composable

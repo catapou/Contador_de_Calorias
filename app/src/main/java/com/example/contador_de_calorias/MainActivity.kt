@@ -1,49 +1,74 @@
 package com.example.contador_de_calorias
 
+// Importa todas as funções e classes da UI separada
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
-import com.example.contador_de_calorias.R
-import androidx.compose.foundation.Image
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -112,8 +137,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var showEditMealDialog by remember { mutableStateOf(false) }
     var showMacroSummaryDialog by remember { mutableStateOf(false) }
 
+    // Estado para controlar a exibição do diálogo de informações iniciais
     var showInitialInfoDialog by remember { mutableStateOf(true) }
+    // Estado para controlar a exibição do diálogo de IMC
+    var showBMIDialog by remember { mutableStateOf(false) }
+    // Estado para armazenar as informações do utilizador
     var userInfo by remember { mutableStateOf(UserInfo()) }
+    // Estado para armazenar o objetivo de peso do utilizador
+    var userWeightGoal by remember { mutableStateOf("") }
 
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
@@ -408,25 +439,63 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
         }
     }
 
+    // Cores reutilizáveis, se ainda não estiverem em Ui_Elements
+    // Estas val são duplicadas, mas servem para fins de demonstração
+    // Em um projeto real, seriam acessadas diretamente de Ui_Elements
     val FadedGreen = Color(0xFF6C9E6C)
     val FadedRed = Color(0xFFB36B6B)
     val FadedBlue = Color(0xFF6A8EAE)
 
+
     // Exibe o pop-up de informações iniciais se showInitialInfoDialog for verdadeiro
     if (showInitialInfoDialog) {
         InitialInfoDialog(
-            onDismiss = { /* Não permite fechar sem preencher */ },
+            onDismiss = { /* Não permite fechar sem preencher neste caso, mas a função é necessária */ },
             onInfoSubmitted = { info ->
                 userInfo = info
+
+                // Lógica de cálculo do IMC movida para MainActivity
+                val weight = userInfo.weight.toDoubleOrNull()
+                val heightCm = userInfo.height.toDoubleOrNull()
+                val calculatedBmi = if (weight != null && heightCm != null && heightCm > 0) {
+                    val heightMeters = heightCm / 100.0
+                    weight / (heightMeters * heightMeters)
+                } else {
+                    null
+                }
+
                 showInitialInfoDialog = false
+                if (calculatedBmi != null) {
+                    showBMIDialog = true
+                }
             },
-            // Passa os estados e eventos de atualização para o InitialInfoDialog
-            // dobInput e onDobInputChange são removidos daqui pois agora são geridos internamente no InitialInfoDialog
-            // para simplificar a passagem de estado, já que o InitialInfoDialog é self-contained para sua lógica de campos
-            initialUserInfo = userInfo // Passa o userInfo inicial para popular os campos
+            initialUserInfo = userInfo
         )
     }
 
+    // Exibe o pop-up de IMC se showBMIDialog for verdadeiro
+    if (showBMIDialog) {
+        // Recalcula o IMC antes de exibir o diálogo para garantir que é o mais recente
+        val weight = userInfo.weight.toDoubleOrNull()
+        val heightCm = userInfo.height.toDoubleOrNull()
+        val currentBmi = if (weight != null && heightCm != null && heightCm > 0) {
+            val heightMeters = heightCm / 100.0
+            weight / (heightMeters * heightMeters)
+        } else {
+            null
+        }
+
+        BMIDialog(
+            userInfo = userInfo,
+            bmi = currentBmi, // Passa o IMC calculado
+            onDismiss = { showBMIDialog = false }, // Permite fechar o diálogo de IMC
+            onGoalSelected = { goal ->
+                userWeightGoal = goal // Armazena o objetivo de peso selecionado
+                showBMIDialog = false // Fecha o diálogo de IMC
+                // Poderá adicionar lógica aqui para ajustar o dailyLimit com base no objetivo de peso
+            }
+        )
+    }
 
     if (showMealDialog) {
         AlertDialog(
@@ -594,7 +663,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     MacroInputField(value = editedMealProtein, onValueChange = { editedMealProtein = it }, label = "Protein (g)")
                     MacroInputField(value = editedMealCarbs, onValueChange = { editedMealCarbs = it }, label = "Carbohydrates (g)")
                     MacroInputField(value = editedMealFats, onValueChange = { editedMealFats = it }, label = "Fats (g)")
-                    MacroInputField(value = editedMealSalt, onValueChange = { mealSalt = it }, label = "Salt (g)", isDouble = true)
+                    MacroInputField(value = editedMealSalt, onValueChange = { editedMealSalt = it }, label = "Salt (g)", isDouble = true)
                     MacroInputField(value = editedMealFiber, onValueChange = { editedMealFiber = it }, label = "Fiber (g)")
                     MacroInputField(value = editedMealPolyols, onValueChange = { editedMealPolyols = it }, label = "Polyols (g)")
                     MacroInputField(value = editedMealStarch, onValueChange = { editedMealStarch = it }, label = "Starch (g)")
@@ -657,89 +726,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
                 ) {
                     Text("Cancel")
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    }
-
-    @Composable
-    fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
-        val totalCalories = mealList.sumOf { it.calories }
-        val totalProtein = mealList.sumOf { it.protein }
-        val totalCarbs = mealList.sumOf { it.carbs }
-        val totalFats = mealList.sumOf { it.fats }
-        val totalSalt = mealList.sumOf { it.salt }
-        val totalFiber = mealList.sumOf { it.fiber }
-        val totalPolyols = mealList.sumOf { it.polyols }
-        val totalStarch = mealList.sumOf { it.starch }
-
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text(
-                    "Daily Macro Summary",
-                    fontSize = 22.sp,
-                    lineHeight = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                Column {
-                    Text(
-                        "Total Calories: $totalCalories Kcal",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Protein: $totalProtein g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Carbohydrates: $totalCarbs g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Fats: $totalFats g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Salt: ${String.format("%.1f", totalSalt)} g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Fiber: $totalFiber g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Polyols: $totalPolyols g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Total Starch: $totalStarch g",
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen)) {
-                    Text("OK")
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface
