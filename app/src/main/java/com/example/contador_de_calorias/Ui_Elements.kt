@@ -40,6 +40,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 
 
 // Reusable colors
@@ -65,7 +66,8 @@ data class UserInfo(
     val dob: String = "",
     val weight: String = "",
     val height: String = "",
-    val activityLevel: String = ""
+    val activityLevel: String = "",
+    val gender: String = "" // Adicionado o campo gender
 )
 
 // Reusable macro input field
@@ -121,6 +123,7 @@ fun InitialInfoDialog(
     var activityExpanded by remember { mutableStateOf(false) }
     val activityLevels = listOf("Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active")
     var selectedActivityLevel by remember { mutableStateOf(initialUserInfo.activityLevel.ifEmpty { activityLevels[0] }) }
+    var selectedGender by remember { mutableStateOf(initialUserInfo.gender) } // Novo estado para o sexo
 
     val isDobValid = remember(dobInput.text) {
         try {
@@ -136,7 +139,7 @@ fun InitialInfoDialog(
     }
     val isWeightValid = remember(weightInput) { weightInput.toIntOrNull() != null && weightInput.toInt() > 0 }
     val isHeightValid = remember(heightInput) { heightInput.toIntOrNull() != null && heightInput.toInt() > 0 }
-    val isFormValid = isDobValid && isWeightValid && isHeightValid && selectedActivityLevel.isNotBlank()
+    val isFormValid = isDobValid && isWeightValid && isHeightValid && selectedActivityLevel.isNotBlank() && selectedGender.isNotBlank() // Valida o sexo também
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -273,12 +276,43 @@ fun InitialInfoDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+
+                // Adicionar a seleção de sexo
+                Text(
+                    "Gender",
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceAround // Para espaçar os botões
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { selectedGender = "Man" }) {
+                        RadioButton(
+                            selected = (selectedGender == "Man"),
+                            onClick = { selectedGender = "Man" }
+                        )
+                        Text("Man", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { selectedGender = "Woman" }) {
+                        RadioButton(
+                            selected = (selectedGender == "Woman"),
+                            onClick = { selectedGender = "Woman" }
+                        )
+                        Text("Woman", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
+                    }
+                }
+                if (selectedGender.isBlank()) {
+                    Text("Please select your gender.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel))
+                    onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel, selectedGender)) // Passa o sexo
                     onDismiss()
                 },
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
@@ -385,7 +419,7 @@ fun BMIDialog(
             TextButton(
                 onClick = onDismiss, // Just dismisses, goal is handled by radio button click
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
-                enabled = true // Always enabled to dismiss
+                enabled = selectedGoal.isNotBlank() // O botão "OK" só é habilitado se uma meta for selecionada
             ) {
                 Text("OK")
             }

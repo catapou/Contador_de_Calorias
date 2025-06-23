@@ -60,7 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment // Adicionado para resolver 'Unresolved reference 'Alignment''
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -74,6 +74,14 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.roundToInt
 // import androidx.compose.ui.graphics.lerp // Removido: vamos fazer a interpolação manualmente
+
+// Importações adicionadas para resolver os erros de "Unresolved reference"
+import com.example.contador_de_calorias.UserInfo
+import com.example.contador_de_calorias.Meal
+import com.example.contador_de_calorias.InitialInfoDialog
+import com.example.contador_de_calorias.BMIDialog
+import com.example.contador_de_calorias.MacroInputField
+import com.example.contador_de_calorias.MacroSummaryDialog
 
 
 class MainActivity : ComponentActivity() {
@@ -149,7 +157,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     // Estado para controlar a exibição do diálogo de IMC
     var showBMIDialog by remember { mutableStateOf(false) }
     // Estado para armazenar as informações do utilizador
-    var userInfo by remember { mutableStateOf(UserInfo()) } // ERRO: UserInfo não será reconhecido sem importação
+    var userInfo by remember { mutableStateOf(UserInfo()) }
     // Estado para controlar a exibição do diálogo de informações do utilizador através do menu
     var showUserInfoDialog by remember { mutableStateOf(false) }
     // Estado para armazenar o objetivo de peso do utilizador
@@ -168,7 +176,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var mealPolyols by remember { mutableStateOf("") }
     var mealStarch by remember { mutableStateOf("") }
 
-    var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) } // ERRO: Meal não será reconhecido sem importação
+    var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) }
     var editedMealName by remember { mutableStateOf("") }
     var editedMealCalories by remember { mutableStateOf("") }
     var editedMealProtein by remember { mutableStateOf("") }
@@ -179,7 +187,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var editedMealPolyols by remember { mutableStateOf("") }
     var editedMealStarch by remember { mutableStateOf("") }
 
-    val mealList = remember { mutableStateListOf<Meal>() } // ERRO: Meal não será reconhecido sem importação
+    val mealList = remember { mutableStateListOf<Meal>() }
 
     val totalMealCalories = mealList.sumOf { it.calories }
 
@@ -212,9 +220,13 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
     // Função para calcular a TMB (Taxa Metabólica Basal) - Equação de Mifflin-St Jeor (assumindo masculino por agora)
     // O input de género seria necessário para um cálculo mais preciso
-    fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int): Double {
-        // Equação de Mifflin-St Jeor para Homens
-        return (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
+    fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int, gender: String): Double { // Adicionado 'gender'
+        // Equação de Mifflin-St Jeor
+        return when (gender) {
+            "Man" -> (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
+            "Woman" -> (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) - 161
+            else -> 0.0 // Valor padrão, caso o gênero não seja "Man" ou "Woman"
+        }
     }
 
     // Função para calcular o GET (Gasto Energético Total Diário) com base no nível de atividade
@@ -565,7 +577,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
     // Exibe o pop-up de informações iniciais se showInitialInfoDialog for verdadeiro
     if (showInitialInfoDialog) {
-        InitialInfoDialog( // ERRO: InitialInfoDialog não será reconhecido sem importação
+        InitialInfoDialog(
             onDismiss = { showInitialInfoDialog = false },
             onInfoSubmitted = { info ->
                 userInfo = info
@@ -590,15 +602,15 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         if (birthYear != null) LocalDate.now().year - birthYear else 0
                     } else 0
 
-                    if (userWeightGoal.isNotBlank() && weightDouble > 0 && heightDouble > 0 && age > 0) {
-                        val bmr = calculateBMR(weightDouble, heightDouble, age)
+                    if (userWeightGoal.isNotBlank() && weightDouble > 0 && heightDouble > 0 && age > 0 && userInfo.gender.isNotBlank()) { // Adicionado 'gender' na validação
+                        val bmr = calculateBMR(weightDouble, heightDouble, age, userInfo.gender) // Passa o gênero
                         val tdee = calculateTDEE(bmr, userInfo.activityLevel)
                         recommendedCalories = getRecommendedCalories(tdee, userWeightGoal)
                         calorieInput = recommendedCalories.toString()
                     } else {
                         recommendedCalories = null
                     }
-                    showBMIDialog = true // ERRO: BMIDialog não será reconhecido sem importação
+                    showBMIDialog = true
                 }
             },
             initialUserInfo = userInfo
@@ -616,7 +628,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             null
         }
 
-        BMIDialog( // ERRO: BMIDialog não será reconhecido sem importação
+        BMIDialog(
             userInfo = userInfo,
             bmi = currentBmi,
             recommendedCalories = recommendedCalories,
@@ -633,9 +645,9 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     if (birthYear != null) LocalDate.now().year - birthYear else 0
                 } else 0
 
-                if (weightDouble > 0 && heightDouble > 0 && age > 0) {
-                    val bmr = calculateBMR(weightDouble, heightDouble, age)
-                    val tdee = calculateTDEE(bmr, userInfo.activityLevel)
+                if (weightDouble > 0 && heightDouble > 0 && age > 0 && userInfo.gender.isNotBlank()) { // Adicionado 'gender' na validação
+                    val bmr = calculateBMR(weightDouble, heightDouble, age, userInfo.gender) // Passa o gênero
+                    val tdee = calculateTDEE(bmr, goal)
                     recommendedCalories = getRecommendedCalories(tdee, goal)
                     calorieInput = recommendedCalories.toString()
                 } else {
@@ -674,7 +686,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         val starch = mealStarch.toIntOrNull() ?: 0
 
                         if (name.isNotBlank() && calories > 0) {
-                            mealList.add(Meal(name, calories, protein, carbs, fats, salt, fiber, polyols, starch)) // ERRO: Meal não será reconhecido
+                            mealList.add(Meal(name, calories, protein, carbs, fats, salt, fiber, polyols, starch))
                         }
                         showMealDialog = false
                         mealName = ""
@@ -717,7 +729,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             },
             text = {
                 Column {
-                    MacroInputField(value = mealName, onValueChange = { mealName = it }, label = "Meal name", keyboardType = KeyboardType.Text) // ERRO: MacroInputField não será reconhecido
+                    MacroInputField(value = mealName, onValueChange = { mealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
                     MacroInputField(value = mealCalories, onValueChange = { mealCalories = it }, label = "calories (Kcal)")
                     MacroInputField(value = mealProtein, onValueChange = { mealProtein = it }, label = "Protein (g)")
                     MacroInputField(value = mealCarbs, onValueChange = { mealCarbs = it }, label = "Carbohydrates (g)")
@@ -806,7 +818,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             title = { Text("Edit Meal", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column {
-                    MacroInputField(value = editedMealName, onValueChange = { editedMealName = it }, label = "Meal name", keyboardType = KeyboardType.Text) // ERRO: MacroInputField não será reconhecido
+                    MacroInputField(value = editedMealName, onValueChange = { editedMealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
                     MacroInputField(value = editedMealCalories, onValueChange = { editedMealCalories = it }, label = "Calories")
                     MacroInputField(value = editedMealProtein, onValueChange = { editedMealProtein = it }, label = "Protein (g)")
                     MacroInputField(value = editedMealCarbs, onValueChange = { editedMealCarbs = it }, label = "Carbohydrates (g)")
@@ -835,7 +847,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                 val newStarch = mealList[index].starch
 
                                 if (newName.isNotBlank() && newCalories > 0) {
-                                    mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch) // ERRO: Meal não será reconhecido
+                                    mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch)
                                 }
                             }
                             showEditMealDialog = false
@@ -881,6 +893,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     }
 
     if (showMacroSummaryDialog) {
-        MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false }) // ERRO: MacroSummaryDialog não será reconhecido
+        MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false })
     }
 }
