@@ -33,25 +33,22 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,14 +60,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.rememberDrawerState
+import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.time.LocalDate
 import kotlin.math.roundToInt
+
+// Adicionando importações que estavam faltando
+import androidx.compose.material3.Divider
+import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.launch
+import androidx.compose.material3.Surface
 
 
 class MainActivity : ComponentActivity() {
@@ -124,7 +131,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    CalorieHomeScreen(isDarkMode = isDarkMode, toggleTheme = { isDarkMode = !isDarkMode })
+                    val context = LocalContext.current
+                    CalorieHomeScreen(
+                        isDarkMode = isDarkMode,
+                        toggleTheme = { isDarkMode = !isDarkMode },
+                        context = context
+                    )
                 }
             }
         }
@@ -133,18 +145,23 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
+fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Context) {
     var calorieInput by remember { mutableStateOf("") }
     var showMealDialog by remember { mutableStateOf(false) }
     var showRemoveMealDialog by remember { mutableStateOf(false) }
     var showEditMealDialog by remember { mutableStateOf(false) }
     var showMacroSummaryDialog by remember { mutableStateOf(false) }
+    var showBMIDialog by remember { mutableStateOf(false) } // Adicionado para controlar a exibição do BMIDialog
 
-    var showInitialInfoDialog by remember { mutableStateOf(true) }
-    var showBMIDialog by remember { mutableStateOf(false) }
-    var userInfo by remember { mutableStateOf(UserInfo()) }
-    var userWeightGoal by remember { mutableStateOf("") }
-    var recommendedCalories by remember { mutableStateOf<Int?>(null) }
+    // Carregar informações do usuário e refeições ao iniciar o aplicativo
+    var userInfo by remember { mutableStateOf(loadUserInfo(context)) }
+    var userWeightGoal by remember { mutableStateOf(loadUserWeightGoal(context)) }
+    var recommendedCalories by remember { mutableStateOf<Int?>(loadRecommendedCalories(context)) }
+    val mealList = remember { mutableStateListOf<Meal>().apply { addAll(loadMeals(context)) } }
+
+    // Controlar a exibição do diálogo inicial.
+    // Se as informações do usuário já estiverem preenchidas, não mostre o diálogo.
+    var showInitialInfoDialog by remember { mutableStateOf(userInfo.dob.isBlank()) }
 
 
     var mealName by remember { mutableStateOf("") }
@@ -168,9 +185,15 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     var editedMealPolyols by remember { mutableStateOf("") }
     var editedMealStarch by remember { mutableStateOf("") }
 
-    val mealList = remember { mutableStateListOf<Meal>() }
 
     val totalMealCalories = mealList.sumOf { it.calories }
+
+    // Atualiza calorieInput com o recommendedCalories carregado, se existir
+    LaunchedEffect(recommendedCalories) {
+        recommendedCalories?.let {
+            calorieInput = it.toString()
+        }
+    }
 
     val dailyLimit = calorieInput.toIntOrNull() ?: 0
     val remainingCalories = dailyLimit - totalMealCalories
@@ -224,7 +247,6 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             else -> tdee
         }
     }
-
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -288,7 +310,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         .fillMaxWidth()
                         .clickable {
                             showInitialInfoDialog = true
-                            showBMIDialog = false
+                            showBMIDialog = false // Fechar BMIDialog se estiver aberto ao abrir InitialInfoDialog
                             scope.launch { drawerState.close() }
                         }
                         .padding(16.dp),
@@ -548,6 +570,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             onDismiss = { showInitialInfoDialog = false },
             onInfoSubmitted = { info ->
                 userInfo = info
+                saveUserInfo(context, userInfo)
 
                 val weight = userInfo.weight.toDoubleOrNull()
                 val heightCm = userInfo.height.toDoubleOrNull()
@@ -573,8 +596,11 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                         val tdee = calculateTDEE(bmr, userInfo.activityLevel)
                         recommendedCalories = getRecommendedCalories(tdee, userWeightGoal)
                         calorieInput = recommendedCalories.toString()
+                        saveRecommendedCalories(context, recommendedCalories)
+                        saveUserWeightGoal(context, userWeightGoal)
                     } else {
                         recommendedCalories = null
+                        saveRecommendedCalories(context, null)
                     }
                     showBMIDialog = true
                 }
@@ -601,6 +627,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             onDismiss = { showBMIDialog = false },
             onGoalSelected = { goal ->
                 userWeightGoal = goal
+                saveUserWeightGoal(context, userWeightGoal)
 
                 val weightDouble = userInfo.weight.toDoubleOrNull() ?: 0.0
                 val heightDouble = userInfo.height.toDoubleOrNull() ?: 0.0
@@ -615,8 +642,10 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                     val tdee = calculateTDEE(bmr, goal)
                     recommendedCalories = getRecommendedCalories(tdee, goal)
                     calorieInput = recommendedCalories.toString()
+                    saveRecommendedCalories(context, recommendedCalories)
                 } else {
                     recommendedCalories = null
+                    saveRecommendedCalories(context, null)
                 }
             }
         )
@@ -652,6 +681,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
                         if (name.isNotBlank() && calories > 0) {
                             mealList.add(Meal(name, calories, protein, carbs, fats, salt, fiber, polyols, starch))
+                            saveMeals(context, mealList)
                         }
                         showMealDialog = false
                         mealName = ""
@@ -693,7 +723,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                 Text("What was your meal?", color = MaterialTheme.colorScheme.onSurface)
             },
             text = {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     MacroInputField(value = mealName, onValueChange = { mealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
                     MacroInputField(value = mealCalories, onValueChange = { mealCalories = it }, label = "calories (Kcal)")
                     MacroInputField(value = mealProtein, onValueChange = { mealProtein = it }, label = "Protein (g)")
@@ -734,6 +764,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
                                         indication = null,
                                         onClick = {
                                             mealList.remove(meal)
+                                            saveMeals(context, mealList)
                                             showRemoveMealDialog = false
                                         }
                                     )
@@ -782,7 +813,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
             },
             title = { Text("Edit Meal", color = MaterialTheme.colorScheme.onSurface) },
             text = {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     MacroInputField(value = editedMealName, onValueChange = { editedMealName = it }, label = "Meal name", keyboardType = KeyboardType.Text)
                     MacroInputField(value = editedMealCalories, onValueChange = { editedMealCalories = it }, label = "Calories")
                     MacroInputField(value = editedMealProtein, onValueChange = { editedMealProtein = it }, label = "Protein (g)")
@@ -813,6 +844,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
 
                                 if (newName.isNotBlank() && newCalories > 0) {
                                     mealList[index] = Meal(newName, newCalories, newProtein, newCarbs, newFats, newSalt, newFiber, newPolyols, newStarch)
+                                    saveMeals(context, mealList)
                                 }
                             }
                             showEditMealDialog = false
@@ -860,4 +892,78 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit) {
     if (showMacroSummaryDialog) {
         MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false })
     }
+}
+
+// Funções de SharedPreferences
+private const val PREFS_NAME = "calorie_app_prefs"
+private const val USER_INFO_KEY = "user_info"
+private const val MEALS_KEY = "meals"
+private const val USER_WEIGHT_GOAL_KEY = "user_weight_goal"
+private const val RECOMMENDED_CALORIES_KEY = "recommended_calories"
+
+
+private fun saveUserInfo(context: Context, userInfo: UserInfo) {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    val json = Gson().toJson(userInfo)
+    editor.putString(USER_INFO_KEY, json)
+    editor.apply()
+}
+
+private fun loadUserInfo(context: Context): UserInfo {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val json = sharedPrefs.getString(USER_INFO_KEY, null)
+    return if (json != null) {
+        Gson().fromJson(json, UserInfo::class.java)
+    } else {
+        UserInfo()
+    }
+}
+
+private fun saveMeals(context: Context, meals: List<Meal>) {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    val json = Gson().toJson(meals)
+    editor.putString(MEALS_KEY, json)
+    editor.apply()
+}
+
+private fun loadMeals(context: Context): List<Meal> {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val json = sharedPrefs.getString(MEALS_KEY, null)
+    return if (json != null) {
+        val type = object : TypeToken<List<Meal>>() {}.type
+        Gson().fromJson(json, type)
+    } else {
+        emptyList()
+    }
+}
+
+private fun saveUserWeightGoal(context: Context, goal: String) {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    editor.putString(USER_WEIGHT_GOAL_KEY, goal)
+    editor.apply()
+}
+
+private fun loadUserWeightGoal(context: Context): String {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return sharedPrefs.getString(USER_WEIGHT_GOAL_KEY, "") ?: ""
+}
+
+private fun saveRecommendedCalories(context: Context, calories: Int?) {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    if (calories != null) {
+        editor.putInt(RECOMMENDED_CALORIES_KEY, calories)
+    } else {
+        editor.remove(RECOMMENDED_CALORIES_KEY)
+    }
+    editor.apply()
+}
+
+private fun loadRecommendedCalories(context: Context): Int? {
+    val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val calories = sharedPrefs.getInt(RECOMMENDED_CALORIES_KEY, -1)
+    return if (calories != -1) calories else null
 }
