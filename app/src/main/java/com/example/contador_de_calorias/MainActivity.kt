@@ -461,11 +461,12 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                    .padding(vertical = 8.dp) // Padding para melhor toque e visual
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
                                         onClick = {
+                                            // O código para editar a refeição permanece o mesmo
                                             selectedMealToEdit = meal
                                             editedMealName = meal.name
                                             editedMealCalories = meal.calories.toString()
@@ -479,41 +480,26 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                                             showEditMealDialog = true
                                         }
                                     ),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.SpaceBetween, // Coloca espaço entre os dois elementos
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
-                                    Text(
-                                        text = meal.name,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        lineHeight = 24.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = "${meal.calories} Kcal",
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        lineHeight = 22.sp
-                                    )
-                                    var macrosText = ""
-                                    if (meal.protein > 0) macrosText += "P: ${meal.protein}g "
-                                    if (meal.carbs > 0) macrosText += "C: ${meal.carbs}g "
-                                    if (meal.fats > 0) macrosText += "G: ${meal.fats}g "
-                                    if (meal.salt > 0.0) macrosText += "Salt: ${String.format("%.1f", meal.salt)}g "
-                                    if (meal.fiber > 0) macrosText += "Fiber: ${meal.fiber}g "
-                                    if (meal.polyols > 0) macrosText += "Polyols: ${meal.polyols}g "
-                                    if (meal.starch > 0) macrosText += "Starch: ${meal.starch}g"
+                                // Nome da refeição
+                                Text(
+                                    text = meal.name,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 24.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
 
-                                    if (macrosText.isNotBlank()) {
-                                        Text(
-                                            text = macrosText.trim(),
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                            lineHeight = 18.sp
-                                        )
-                                    }
-                                }
+                                // Calorias da refeição
+                                Text(
+                                    text = "${meal.calories} Kcal",
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    lineHeight = 22.sp
+                                )
+                                // A exibição dos macros foi removida daqui
                             }
                         }
                     }
