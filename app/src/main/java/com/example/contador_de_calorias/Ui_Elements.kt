@@ -60,6 +60,19 @@ data class Meal(
     val starch: Int = 0
 )
 
+// Novo data class para Receita, agora com os mesmos campos que Meal
+data class Recipe(
+    val name: String,
+    val calories: Int,
+    val protein: Int = 0,
+    val carbs: Int = 0,
+    val fats: Int = 0,
+    val salt: Double = 0.0,
+    val fiber: Int = 0,
+    val polyols: Int = 0,
+    val starch: Int = 0
+)
+
 
 data class UserInfo(
     val dob: String = "",
@@ -76,8 +89,10 @@ fun MacroInputField(
     onValueChange: (String) -> Unit,
     label: String,
     keyboardType: KeyboardType = KeyboardType.Number,
-    isDouble: Boolean = false
+    isDouble: Boolean = false,
+    isRequired: Boolean = false // Novo parâmetro
 ) {
+    val displayLabel = if (isRequired) "$label *" else label // Adiciona "*" se for obrigatório
     OutlinedTextField(
         value = value,
         onValueChange = { newValue ->
@@ -89,7 +104,7 @@ fun MacroInputField(
                 onValueChange(newValue)
             }
         },
-        label = { Text(label) },
+        label = { Text(displayLabel) }, // Usa o displayLabel
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(),
@@ -497,6 +512,88 @@ fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
         confirmButton = {
             TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen)) {
                 Text("OK")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+// Novo composable para adicionar Receitas
+@Composable
+fun AddRecipeDialog(
+    onDismiss: () -> Unit,
+    onRecipeAdded: (Recipe) -> Unit
+) {
+    var recipeName by remember { mutableStateOf("") }
+    var recipeCalories by remember { mutableStateOf("") }
+    var recipeProtein by remember { mutableStateOf("") }
+    var recipeCarbs by remember { mutableStateOf("") }
+    var recipeFats by remember { mutableStateOf("") }
+    var recipeSalt by remember { mutableStateOf("") } // Novo campo
+    var recipeFiber by remember { mutableStateOf("") } // Novo campo
+    var recipePolyols by remember { mutableStateOf("") } // Novo campo
+    var recipeStarch by remember { mutableStateOf("") } // Novo campo
+
+    val isFormValid = recipeName.isNotBlank() && (recipeCalories.toIntOrNull() ?: 0) > 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Add a New Recipe",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Values are for 100g", // Nota adicionada
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                MacroInputField(value = recipeName, onValueChange = { recipeName = it }, label = "Recipe Name", keyboardType = KeyboardType.Text, isRequired = true)
+                MacroInputField(value = recipeCalories, onValueChange = { recipeCalories = it }, label = "Calories (Kcal)", isRequired = true)
+                MacroInputField(value = recipeProtein, onValueChange = { recipeProtein = it }, label = "Protein (g)")
+                MacroInputField(value = recipeCarbs, onValueChange = { recipeCarbs = it }, label = "Carbohydrates (g)")
+                MacroInputField(value = recipeFats, onValueChange = { recipeFats = it }, label = "Fats (g)")
+                MacroInputField(value = recipeSalt, onValueChange = { recipeSalt = it }, label = "Salt (g)", isDouble = true) // Campo de Sal
+                MacroInputField(value = recipeFiber, onValueChange = { recipeFiber = it }, label = "Fiber (g)") // Campo de Fibra
+                MacroInputField(value = recipePolyols, onValueChange = { recipePolyols = it }, label = "Polyols (g)") // Campo de Polióis
+                MacroInputField(value = recipeStarch, onValueChange = { recipeStarch = it }, label = "Starch (g)") // Campo de Amido
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val newRecipe = Recipe(
+                        name = recipeName.trim(),
+                        calories = recipeCalories.toIntOrNull() ?: 0,
+                        protein = recipeProtein.toIntOrNull() ?: 0,
+                        carbs = recipeCarbs.toIntOrNull() ?: 0,
+                        fats = recipeFats.toIntOrNull() ?: 0,
+                        salt = recipeSalt.toDoubleOrNull() ?: 0.0, // Salvando sal
+                        fiber = recipeFiber.toIntOrNull() ?: 0, // Salvando fibra
+                        polyols = recipePolyols.toIntOrNull() ?: 0, // Salvando polióis
+                        starch = recipeStarch.toIntOrNull() ?: 0 // Salvando amido
+                    )
+                    onRecipeAdded(newRecipe)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.textButtonColors(containerColor = FadedGreen, contentColor = Color.White),
+                enabled = isFormValid
+            ) {
+                Text("Add Recipe")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
+            ) {
+                Text("Cancel")
             }
         },
         containerColor = MaterialTheme.colorScheme.surface
