@@ -32,12 +32,6 @@ Uma aplicação Android moderna construída com **Jetpack Compose**, focada no a
 
 ---
 
-## 📸 Capturas de Ecrã
-
-> *(Adiciona aqui imagens como previews da aplicação, se quiseres)*
-
----
-
 ## ⚙️ Como Correr o Projeto
 
 1. Clonar o repositório:
@@ -79,12 +73,6 @@ git clone https://github.com/teu-utilizador/contador-de-calorias.git
 
 ## 🧑‍💻 Autor
 
-Gustavo Arroja  
-[LinkedIn](https://www.linkedin.com/) (adiciona se quiseres)  
-💡 Projeto académico de Engenharia de Software
+Gustavo Arroja
 
 ---
-
-## 📃 Licença
-
-Este projeto é open-source e pode ser usado livremente para fins educacionais e pessoais.
