@@ -76,22 +76,38 @@ import com.google.gson.reflect.TypeToken
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
-// Adicionando importações que estavam faltando
+// Importações adicionais necessárias
 import androidx.compose.material3.Divider
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.launch
 import androidx.compose.material3.Surface
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import androidx.compose.material.icons.filled.Book // Import para o ícone de livro
-import com.example.contador_de_calorias.AddRecipeDialog // Import para o novo diálogo de receitas
+import androidx.compose.material.icons.filled.Book
+
+// Importar composables e funções de utilidade de Ui_Elements.kt
+import com.example.contador_de_calorias.AddRecipeDialog
+import com.example.contador_de_calorias.BMIDialog
+import com.example.contador_de_calorias.CustomMealInputDialog
+import com.example.contador_de_calorias.InitialInfoDialog
+import com.example.contador_de_calorias.MacroInputField
+import com.example.contador_de_calorias.MacroSummaryDialog
+import com.example.contador_de_calorias.QuantityInputDialog
+import com.example.contador_de_calorias.calculateBMR
+import com.example.contador_de_calorias.calculateTDEE
+import com.example.contador_de_calorias.getRecommendedCalories
+
+
+ // Configura o tema da aplicação (modo claro/escuro) e o `CalorieHomeScreen`.
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            // Estado para controlar se o modo escuro está ativado ou desativado
             var isDarkMode by remember { mutableStateOf(true) }
 
+            // Definição das cores para o tema claro
             val LightColors = lightColorScheme(
                 primary = Color(0xFF6200EE),
                 onPrimary = Color.White,
@@ -111,6 +127,7 @@ class MainActivity : ComponentActivity() {
                 onError = Color.White
             )
 
+            // Definição das cores para o tema escuro
             val DarkColors = darkColorScheme(
                 primary = Color(0xFFBB86FC),
                 onPrimary = Color.Black,
@@ -130,14 +147,17 @@ class MainActivity : ComponentActivity() {
                 onError = Color.Black
             )
 
+            // Aplica o tema (claro ou escuro) com base no estado `isDarkMode`
             MaterialTheme(
                 colorScheme = if (isDarkMode) DarkColors else LightColors
             ) {
+                // `Surface` é um contentor que aplica as cores do tema
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
+                    // Chama o composable principal da aplicação, passando o estado do tema e a função para alternar o tema
                     CalorieHomeScreen(
                         isDarkMode = isDarkMode,
                         toggleTheme = { isDarkMode = !isDarkMode },
@@ -149,38 +169,45 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * CalorieHomeScreen é o composable principal que exibe a interface do utilizador da aplicação.
+ * Gerencia os estados da UI, interações do utilizador e a lógica de apresentação.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Context) {
+    // Estados da UI e dados da aplicação
     var calorieInput by remember { mutableStateOf("") }
     var showMealDialog by remember { mutableStateOf(false) }
     var showRemoveMealDialog by remember { mutableStateOf(false) }
     var showEditMealDialog by remember { mutableStateOf(false) }
     var showMacroSummaryDialog by remember { mutableStateOf(false) }
     var showBMIDialog by remember { mutableStateOf(false) }
-    var showAddRecipeDialog by remember { mutableStateOf(false) } // Novo estado para o diálogo de receitas
-    var showQuantityDialog by remember { mutableStateOf(false) } // Novo estado para o diálogo de quantidade
-    var selectedRecipeForQuantity by remember { mutableStateOf<Recipe?>(null) } // Receita selecionada para o diálogo de quantidade
-    var showCustomMealInput by remember { mutableStateOf(false) } // NOVO: Estado para o diálogo de entrada de refeição personalizada
+    var showAddRecipeDialog by remember { mutableStateOf(false) }
+    var showQuantityDialog by remember { mutableStateOf(false) }
+    var selectedRecipeForQuantity by remember { mutableStateOf<Recipe?>(null) }
+    var showCustomMealInput by remember { mutableStateOf(false) }
 
-    // Estado para controlar a data selecionada. Começa com o dia de hoje.
+    // Estado para controlar a data selecionada, iniciando com a data atual
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
 
+    // Informações do utilizador e metas de peso, carregadas da persistência
     var userInfo by remember { mutableStateOf(loadUserInfo(context)) }
     var userWeightGoal by remember { mutableStateOf(loadUserWeightGoal(context)) }
     var recommendedCalories by remember { mutableStateOf<Int?>(loadRecommendedCalories(context)) }
 
-    // A lista de refeições agora é carregada com base na data selecionada.
+    // Lista de refeições para a data selecionada, observando mudanças na data
     val mealList = remember(selectedDate) {
         mutableStateListOf<Meal>().apply { addAll(loadMealsForDate(context, selectedDate)) }
     }
 
-    // Lista de receitas
+    // Lista de receitas do utilizador
     val recipesList = remember { mutableStateListOf<Recipe>().apply { addAll(loadRecipes(context)) } }
 
+    // Estado para mostrar o diálogo de informações iniciais se o perfil não estiver completo
     var showInitialInfoDialog by remember { mutableStateOf(userInfo.dob.isBlank()) }
 
-    // Estes campos serão preenchidos manualmente ou através da seleção de receita/quantidade
+    // Estados para inputs de refeição manual ou edição
     var mealName by remember { mutableStateOf("") }
     var mealCalories by remember { mutableStateOf("") }
     var mealProtein by remember { mutableStateOf("") }
@@ -191,6 +218,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
     var mealPolyols by remember { mutableStateOf("") }
     var mealStarch by remember { mutableStateOf("") }
 
+    // Estados para edição de refeição
     var selectedMealToEdit by remember { mutableStateOf<Meal?>(null) }
     var editedMealName by remember { mutableStateOf("") }
     var editedMealCalories by remember { mutableStateOf("") }
@@ -202,33 +230,38 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
     var editedMealPolyols = remember { mutableStateOf("") }
     var editedMealStarch by remember { mutableStateOf("") }
 
+    // Calorias totais consumidas, calculadas dinamicamente
     val totalMealCalories by remember(mealList) {
         derivedStateOf { mealList.sumOf { it.calories } }
     }
 
-
+    // Efeito para atualizar o input de calorias quando as calorias recomendadas mudam
     LaunchedEffect(recommendedCalories) {
         recommendedCalories?.let {
             calorieInput = it.toString()
         }
     }
 
+    // Cálculos de calorias restantes e limite diário
     val dailyLimit = calorieInput.toIntOrNull() ?: 0
     val remainingCalories = dailyLimit - totalMealCalories
 
+    // Definições de layout e dimensões da tela
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val topSpacing = screenHeight * 0.075f
     val lineSpacing = screenHeight * 0.05f
 
+    // Estado da gaveta de navegação (menu lateral)
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope() // Coroutine scope para operações assíncronas
 
+    // Definição de cores personalizadas
     val FadedGreen = Color(0xFF6C9E6C)
     val FadedRed = Color(0xFFB36B6B)
     val FadedBlue = Color(0xFF6A8EAE)
 
-    // Lógica do DatePickerDialog
+    // Configuração do DatePickerDialog para seleção de datas
     val datePickerDialog = DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
@@ -239,7 +272,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
         selectedDate.dayOfMonth
     )
 
-
+    // Função para interpolar cores manualmente para a barra de progresso
     fun manualColorLerp(start: Color, end: Color, fraction: Float): Color {
         val inverseFraction = 1 - fraction
         val red = start.red * inverseFraction + end.red * fraction
@@ -249,39 +282,12 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
         return Color(red, green, blue, alpha)
     }
 
-    fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int, gender: String): Double {
-        return when (gender) {
-            "Man" -> (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
-            "Woman" -> (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) - 161
-            else -> 0.0
-        }
-    }
-
-    fun calculateTDEE(bmr: Double, activityLevel: String): Int {
-        val activityFactor = when (activityLevel) {
-            "Sedentary" -> 1.2
-            "Lightly Active" -> 1.375
-            "Moderately Active" -> 1.55
-            "Very Active" -> 1.725
-            "Extra Active" -> 1.9
-            else -> 1.2
-        }
-        return (bmr * activityFactor).roundToInt()
-    }
-
-    fun getRecommendedCalories(tdee: Int, goal: String): Int {
-        return when (goal) {
-            "Maintain Weight" -> tdee
-            "Lose Weight" -> tdee - 500
-            "Gain Weight" -> tdee + 500
-            else -> tdee
-        }
-    }
-
+    // Modal Drawer para o menu lateral de navegação
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(screenWidth * 0.7f)) {
+                // Logo da aplicação no menu lateral
                 Image(
                     painter = painterResource(
                         id = if (isDarkMode) R.drawable.logo_conta_calorias_sem_fundo_dark
@@ -294,6 +300,8 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         .align(Alignment.CenterHorizontally)
                 )
                 Divider()
+
+                // Opção para alternar o tema (modo claro/escuro)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -313,7 +321,8 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                // NOVO ITEM DE MENU: CALENDÁRIO
+
+                // Opção de calendário para selecionar a data das refeições
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -336,6 +345,8 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
+
+                // Opção para ver o resumo completo de macros
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -358,6 +369,8 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
+
+                // Opção para gerir as informações do utilizador
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -381,12 +394,13 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                // NOVO ITEM DE MENU: RECIPES
+
+                // Opção para gerir as receitas
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            showAddRecipeDialog = true // Abre o diálogo de adicionar receita
+                            showAddRecipeDialog = true
                             scope.launch { drawerState.close() }
                         }
                         .padding(16.dp),
@@ -399,15 +413,16 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         fontSize = 18.sp
                     )
                     Icon(
-                        imageVector = Icons.Filled.Book, // Ícone de livro de receitas
+                        imageVector = Icons.Filled.Book,
                         contentDescription = "Recipes",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
         },
-        gesturesEnabled = drawerState.isOpen
+        gesturesEnabled = drawerState.isOpen // Ativa ou desativa gestos para abrir a gaveta
     ) {
+        // Conteúdo principal da tela
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
@@ -415,6 +430,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                     .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Cabeçalho com o botão de menu e o logo
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -449,7 +465,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                     )
                 }
 
-                // INDICADOR DE DATA
+                // Indicador de data atual
                 Text(
                     text = if (selectedDate.isEqual(LocalDate.now())) "Today"
                     else selectedDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
@@ -460,6 +476,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
 
                 Spacer(modifier = Modifier.height(lineSpacing / 32))
 
+                // Campo de input para o limite de calorias diário
                 OutlinedTextField(
                     value = calorieInput,
                     onValueChange = { calorieInput = it },
@@ -486,7 +503,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
 
                 Spacer(modifier = Modifier.height(lineSpacing / 4))
 
-                // Dynamic "Your Meals" text
+                // Título dinâmico para a lista de refeições, baseado na data selecionada
                 val mealsHeaderText = when (selectedDate) {
                     LocalDate.now() -> "Your Meals Today!"
                     LocalDate.now().minusDays(1) -> "Your Meals Yesterday!"
@@ -503,6 +520,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
 
                 Spacer(modifier = Modifier.height(lineSpacing / 4))
 
+                // Botões para adicionar e remover refeições
                 Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier.fillMaxWidth()
@@ -538,22 +556,21 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
 
                 Spacer(modifier = Modifier.height(lineSpacing / 2))
 
+                // Lista de refeições diárias
                 if (mealList.isNotEmpty()) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 350.dp) // Ajuste de altura
-                            .padding(vertical = 8.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .heightIn(max = 350.dp)
+                            .padding(vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(mealList) { meal ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp)) // Aplica bordas arredondadas ao item da lista
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -566,11 +583,12 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                                             editedMealFats = meal.fats.toString()
                                             editedMealSalt = meal.salt.toString()
                                             editedMealFiber = meal.fiber.toString()
-                                            editedMealPolyols.value = meal.polyols.toString() // Use .value here
+                                            editedMealPolyols.value = meal.polyols.toString()
                                             editedMealStarch = meal.starch.toString()
                                             showEditMealDialog = true
                                         }
-                                    ),
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -595,6 +613,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
 
                 Spacer(modifier = Modifier.height(lineSpacing / 2))
 
+                // Exibição de calorias restantes ou excedidas
                 Text(
                     text = if (remainingCalories < 0) {
                         val exceededCalories = totalMealCalories - dailyLimit
@@ -610,12 +629,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Barra de progresso para o consumo de calorias
                 val progress = if (dailyLimit > 0) {
                     (totalMealCalories.toFloat() / dailyLimit.toFloat()).coerceIn(0f, 1f)
                 } else {
                     0f
                 }
 
+                // Cor da barra de progresso baseada nas calorias
                 val progressBarColor = if (dailyLimit == 0) {
                     if (totalMealCalories > 0) FadedRed else Color.LightGray
                 } else if (totalMealCalories <= dailyLimit) {
@@ -639,6 +660,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
         }
     }
 
+    // Gerenciamento de exibição de diálogos
     if (showInitialInfoDialog) {
         InitialInfoDialog(
             onDismiss = { showInitialInfoDialog = false },
@@ -666,6 +688,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                     } else 0
 
                     if (userWeightGoal.isNotBlank() && weightDouble > 0 && heightDouble > 0 && age > 0 && userInfo.gender.isNotBlank()) {
+                        // Usar funções movidas para Ui_Elements.kt
                         val bmr = calculateBMR(weightDouble, heightDouble, age, userInfo.gender)
                         val tdee = calculateTDEE(bmr, userInfo.activityLevel)
                         recommendedCalories = getRecommendedCalories(tdee, userWeightGoal)
@@ -712,6 +735,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                 } else 0
 
                 if (weightDouble > 0 && heightDouble > 0 && age > 0 && userInfo.gender.isNotBlank()) {
+                    // Usar funções movidas para Ui_Elements.kt
                     val bmr = calculateBMR(weightDouble, heightDouble, age, userInfo.gender)
                     val tdee = calculateTDEE(bmr, goal)
                     recommendedCalories = getRecommendedCalories(tdee, goal)
@@ -730,7 +754,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
             onDismissRequest = {
                 showMealDialog = false
                 selectedRecipeForQuantity = null
-                mealName = "" // Clear fields just in case
+                mealName = ""
                 mealCalories = ""
                 mealProtein = ""
                 mealCarbs = ""
@@ -745,6 +769,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
             },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    // Lista de receitas para seleção
                     if (recipesList.isNotEmpty()) {
                         Text(
                             "Select from your recipes:",
@@ -756,14 +781,16 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 150.dp) // Altura máxima para a lista de receitas
+                                .heightIn(max = 150.dp)
                                 .padding(vertical = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp) // Espaçamento entre os itens
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(recipesList) { recipe ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp)) // Aplica bordas arredondadas ao item da lista
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
                                         .clickable(
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = null,
@@ -772,17 +799,14 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                                                 showQuantityDialog = true
                                             }
                                         )
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // Background com transparência
-                                        .clip(RoundedCornerShape(8.dp)) // Bordas arredondadas
-                                        .padding(start = 20.dp, top = 16.dp, bottom = 16.dp, end = 12.dp) // Increased padding for top, bottom, and left
-                                    ,
+                                        .padding(horizontal = 20.dp, vertical = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         text = "${recipe.name} (${recipe.calories} Kcal / 100g)",
                                         fontSize = 16.sp,
                                         color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.weight(1f) // Faz o texto ocupar o espaço disponível
+                                        modifier = Modifier.weight(1f)
                                     )
                                 }
                             }
@@ -790,7 +814,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // Button to add custom meal
+                    // Botão para adicionar refeição personalizada
                     Button(
                         onClick = {
                             showCustomMealInput = true
@@ -805,7 +829,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                     }
                 }
             },
-            confirmButton = {}, // No confirm button on this initial dialog, confirmation happens in sub-dialogs
+            confirmButton = {},
             dismissButton = {
                 TextButton(
                     onClick = { showMealDialog = false },
@@ -823,20 +847,24 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
             onDismissRequest = { showRemoveMealDialog = false },
             title = { Text("Select meal to remove", color = MaterialTheme.colorScheme.onSurface) },
             text = {
+                // Mensagem se não houver refeições para remover
                 if (mealList.isEmpty()) {
                     Text("No meals to remove.", color = MaterialTheme.colorScheme.onSurface)
                 } else {
+                    // Lista de refeições para remoção
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 350.dp)
                             .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp) // Espaçamento entre os itens
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         mealList.forEach { meal ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp)) // Aplica bordas arredondadas ao item da lista
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -846,10 +874,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                                             showRemoveMealDialog = false
                                         }
                                     )
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // Background com transparência
-                                    .clip(RoundedCornerShape(8.dp)) // Bordas arredondadas
-                                    .padding(start = 20.dp, top = 16.dp, bottom = 16.dp, end = 12.dp) // Increased padding for top, bottom, and left
-                                ,
+                                    .padding(start = 20.dp, top = 16.dp, bottom = 16.dp, end = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -857,7 +882,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                                     fontSize = 18.sp,
                                     lineHeight = 24.sp,
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f) // Faz o texto ocupar o espaço disponível
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
@@ -877,6 +902,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
         )
     }
 
+    // Diálogo para editar uma refeição existente
     if (showEditMealDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -893,7 +919,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                     MacroInputField(value = editedMealFats, onValueChange = { editedMealFats = it }, label = "Fats (g)")
                     MacroInputField(value = editedMealSalt, onValueChange = { editedMealSalt = it }, label = "Salt (g)", isDouble = true)
                     MacroInputField(value = editedMealFiber, onValueChange = { editedMealFiber = it }, label = "Fiber (g)")
-                    MacroInputField(value = editedMealPolyols.value, onValueChange = { editedMealPolyols.value = it }, label = "Polyols (g)") // Use .value here
+                    MacroInputField(value = editedMealPolyols.value, onValueChange = { editedMealPolyols.value = it }, label = "Polyols (g)")
                     MacroInputField(value = editedMealStarch, onValueChange = { editedMealStarch = it }, label = "Starch (g)")
                 }
             },
@@ -911,7 +937,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                                 val newFats = editedMealFats.toIntOrNull() ?: 0
                                 val newSalt = editedMealSalt.toDoubleOrNull() ?: 0.0
                                 val newFiber = editedMealFiber.toIntOrNull() ?: 0
-                                val newPolyols = editedMealPolyols.value.toIntOrNull() ?: 0 // Use .value here
+                                val newPolyols = editedMealPolyols.value.toIntOrNull() ?: 0
                                 val newStarch = editedMealStarch.toIntOrNull() ?: 0
 
                                 if (newName.isNotBlank() && newCalories > 0) {
@@ -943,6 +969,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
         )
     }
 
+    // Diálogo para exibir o resumo de macros
     if (showMacroSummaryDialog) {
         MacroSummaryDialog(mealList = mealList, onDismiss = { showMacroSummaryDialog = false })
     }
@@ -958,7 +985,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
         )
     }
 
-    // NOVO: Diálogo para inserir a quantidade da receita
+    // Diálogo para inserir a quantidade de uma receita selecionada
     if (showQuantityDialog && selectedRecipeForQuantity != null) {
         QuantityInputDialog(
             recipe = selectedRecipeForQuantity!!,
@@ -977,18 +1004,18 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                 mealPolyols = ""
                 mealStarch = ""
 
-                showQuantityDialog = false // Fecha o diálogo de quantidade
-                showMealDialog = false // Fecha o diálogo principal "Add a Meal"
+                showQuantityDialog = false
+                showMealDialog = false
             }
         )
     }
 
-    // NOVO: Diálogo para adicionar refeição personalizada
+    // Diálogo para adicionar refeição personalizada
     if (showCustomMealInput) {
         CustomMealInputDialog(
             onDismiss = {
-                showCustomMealInput = false // Volta para o diálogo anterior (seleção de refeição/receita)
-                // Opcional: Limpar campos quando o utilizador cancela a adição da refeição personalizada
+                showCustomMealInput = false
+                // Opcional: Limpar campos quando o utilizador cancela a adição
                 mealName = ""
                 mealCalories = ""
                 mealProtein = ""
@@ -1002,8 +1029,8 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
             onMealAdded = { meal ->
                 mealList.add(meal)
                 saveMealsForDate(context, selectedDate, mealList)
-                showCustomMealInput = false // Fecha o diálogo de refeição personalizada
-                showMealDialog = false // Fecha o diálogo inicial "Add a Meal"
+                showCustomMealInput = false
+                showMealDialog = false
                 // Limpar campos após adição bem-sucedida
                 mealName = ""
                 mealCalories = ""
@@ -1015,7 +1042,7 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
                 mealPolyols = ""
                 mealStarch = ""
             },
-            mealName = mealName, // Passa os valores atuais
+            mealName = mealName,
             mealCalories = mealCalories,
             mealProtein = mealProtein,
             mealCarbs = mealCarbs,
@@ -1037,177 +1064,15 @@ fun CalorieHomeScreen(isDarkMode: Boolean, toggleTheme: () -> Unit, context: Con
     }
 }
 
-// NOVO Composible: Diálogo para inserir a quantidade de uma receita
-@Composable
-fun QuantityInputDialog(
-    recipe: Recipe,
-    onDismiss: () -> Unit,
-    onMealCalculated: (Meal) -> Unit // Callback para retornar a refeição calculada
-) {
-    var quantityGrams by remember { mutableStateOf("") }
-    val grams = quantityGrams.toDoubleOrNull() ?: 0.0
-
-    val calculatedCalories = remember(grams) { (recipe.calories * (grams / 100.0)).roundToInt() }
-    val calculatedProtein = remember(grams) { (recipe.protein * (grams / 100.0)).roundToInt() }
-    val calculatedCarbs = remember(grams) { (recipe.carbs * (grams / 100.0)).roundToInt() }
-    val calculatedFats = remember(grams) { (recipe.fats * (grams / 100.0)).roundToInt() }
-    val calculatedSalt = remember(grams) { recipe.salt * (grams / 100.0) }
-    val calculatedFiber = remember(grams) { (recipe.fiber * (grams / 100.0)).roundToInt() }
-    val calculatedPolyols = remember(grams) { (recipe.polyols * (grams / 100.0)).roundToInt() }
-    val calculatedStarch = remember(grams) { (recipe.starch * (grams / 100.0)).roundToInt() }
-
-    val isConfirmEnabled = grams > 0
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("Enter Quantity for ${recipe.name}", color = MaterialTheme.colorScheme.onSurface)
-        },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                MacroInputField(
-                    value = quantityGrams,
-                    onValueChange = { newValue ->
-                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
-                            quantityGrams = newValue
-                        }
-                    },
-                    label = "Quantity (grams)",
-                    keyboardType = KeyboardType.Number,
-                    isDouble = true,
-                    isRequired = true
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Calculated Nutritional Values:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text("Calories: ${calculatedCalories} Kcal", color = MaterialTheme.colorScheme.onSurface)
-                Text("Protein: ${calculatedProtein} g", color = MaterialTheme.colorScheme.onSurface)
-                Text("Carbohydrates: ${calculatedCarbs} g", color = MaterialTheme.colorScheme.onSurface)
-                Text("Fats: ${calculatedFats} g", color = MaterialTheme.colorScheme.onSurface)
-                Text("Salt: ${String.format("%.1f", calculatedSalt)} g", color = MaterialTheme.colorScheme.onSurface)
-                Text("Fiber: ${calculatedFiber} g", color = MaterialTheme.colorScheme.onSurface)
-                Text("Polyols: ${calculatedPolyols} g", color = MaterialTheme.colorScheme.onSurface)
-                Text("Starch: ${calculatedStarch} g", color = MaterialTheme.colorScheme.onSurface)
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val meal = Meal(
-                        name = "${recipe.name} (${grams.roundToInt()}g)", // Nome da refeição com a quantidade arredondada
-                        calories = calculatedCalories,
-                        protein = calculatedProtein,
-                        carbs = calculatedCarbs,
-                        fats = calculatedFats,
-                        salt = calculatedSalt,
-                        fiber = calculatedFiber,
-                        polyols = calculatedPolyols,
-                        starch = calculatedStarch
-                    )
-                    onMealCalculated(meal)
-                    // onDismiss será chamado pelo onMealCalculated no CalorieHomeScreen
-                },
-                colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen),
-                enabled = isConfirmEnabled
-            ) {
-                Text("Confirm")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
-            ) {
-                Text("Cancel")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface
-    )
-}
-
-// NOVO Composible: Diálogo para adicionar refeição personalizada
-@Composable
-fun CustomMealInputDialog(
-    onDismiss: () -> Unit,
-    onMealAdded: (Meal) -> Unit,
-    mealName: String,
-    mealCalories: String,
-    mealProtein: String,
-    mealCarbs: String,
-    mealFats: String,
-    mealSalt: String,
-    mealFiber: String,
-    mealPolyols: String,
-    mealStarch: String,
-    onNameChange: (String) -> Unit,
-    onCaloriesChange: (String) -> Unit,
-    onProteinChange: (String) -> Unit,
-    onCarbsChange: (String) -> Unit,
-    onFatsChange: (String) -> Unit,
-    onSaltChange: (String) -> Unit,
-    onFiberChange: (String) -> Unit,
-    onPolyolsChange: (String) -> Unit,
-    onStarchChange: (String) -> Unit
-) {
-    val isConfirmEnabled = mealName.isNotBlank() && (mealCalories.toIntOrNull() ?: 0) > 0
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("Add Custom Meal", color = MaterialTheme.colorScheme.onSurface)
-        },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                MacroInputField(value = mealName, onValueChange = onNameChange, label = "Meal name", keyboardType = KeyboardType.Text, isRequired = true)
-                MacroInputField(value = mealCalories, onValueChange = onCaloriesChange, label = "calories (Kcal)", isRequired = true)
-                MacroInputField(value = mealProtein, onValueChange = onProteinChange, label = "Protein (g)")
-                MacroInputField(value = mealCarbs, onValueChange = onCarbsChange, label = "Carbohydrates (g)")
-                MacroInputField(value = mealFats, onValueChange = onFatsChange, label = "Fats (g)")
-                MacroInputField(value = mealSalt, onValueChange = onSaltChange, label = "Salt (g)", isDouble = true)
-                MacroInputField(value = mealFiber, onValueChange = onFiberChange, label = "Fiber (g)")
-                MacroInputField(value = mealPolyols, onValueChange = onPolyolsChange, label = "Polyols (g)")
-                MacroInputField(value = mealStarch, onValueChange = onStarchChange, label = "Starch (g)")
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val newMeal = Meal(
-                        name = mealName.trim(),
-                        calories = mealCalories.toIntOrNull() ?: 0,
-                        protein = mealProtein.toIntOrNull() ?: 0,
-                        carbs = mealCarbs.toIntOrNull() ?: 0,
-                        fats = mealFats.toIntOrNull() ?: 0,
-                        salt = mealSalt.toDoubleOrNull() ?: 0.0,
-                        fiber = mealFiber.toIntOrNull() ?: 0,
-                        polyols = mealPolyols.toIntOrNull() ?: 0,
-                        starch = mealStarch.toIntOrNull() ?: 0
-                    )
-                    onMealAdded(newMeal)
-                },
-                colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen),
-                enabled = isConfirmEnabled
-            ) {
-                Text("Confirm")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
-            ) {
-                Text("Cancel")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surface
-    )
-}
-
-
+// Constantes para as SharedPreferences
 private const val PREFS_NAME = "calorie_app_prefs"
 private const val USER_INFO_KEY = "user_info"
 private const val USER_WEIGHT_GOAL_KEY = "user_weight_goal"
 private const val RECOMMENDED_CALORIES_KEY = "recommended_calories"
-private const val RECIPES_KEY = "recipes_key" // Nova chave para persistência de receitas
+private const val RECIPES_KEY = "recipes_key"
+
+
+ // Salva as informações do utilizador nas SharedPreferences.
 
 private fun saveUserInfo(context: Context, userInfo: UserInfo) {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -1216,6 +1081,9 @@ private fun saveUserInfo(context: Context, userInfo: UserInfo) {
     editor.putString(USER_INFO_KEY, json)
     editor.apply()
 }
+
+
+ // Carrega as informações do utilizador das SharedPreferences.
 
 private fun loadUserInfo(context: Context): UserInfo {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -1227,19 +1095,24 @@ private fun loadUserInfo(context: Context): UserInfo {
     }
 }
 
-// FUNÇÕES DE PERSISTÊNCIA MODIFICADAS
+
+ // Salva a lista de refeições para uma data específica nas SharedPreferences.
+
 private fun saveMealsForDate(context: Context, date: LocalDate, meals: List<Meal>) {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val editor = sharedPrefs.edit()
     val json = Gson().toJson(meals)
-    val key = "MEALS_${date.toString()}"
+    val key = "MEALS_${date.toString()}" // Chave única para a data
     editor.putString(key, json)
     editor.apply()
 }
 
+
+ // Carrega a lista de refeições para uma data específica das SharedPreferences.
+
 private fun loadMealsForDate(context: Context, date: LocalDate): List<Meal> {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    val key = "MEALS_${date.toString()}"
+    val key = "MEALS_${date.toString()}" // Chave única para a data
     val json = sharedPrefs.getString(key, null)
     return if (json != null) {
         val type = object : TypeToken<List<Meal>>() {}.type
@@ -1249,7 +1122,9 @@ private fun loadMealsForDate(context: Context, date: LocalDate): List<Meal> {
     }
 }
 
-// Funções para salvar e carregar receitas
+
+ // Salva a lista de receitas do utilizador nas SharedPreferences.
+
 private fun saveRecipes(context: Context, recipes: List<Recipe>) {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val editor = sharedPrefs.edit()
@@ -1257,6 +1132,9 @@ private fun saveRecipes(context: Context, recipes: List<Recipe>) {
     editor.putString(RECIPES_KEY, json)
     editor.apply()
 }
+
+
+ // Carrega a lista de receitas do utilizador das SharedPreferences
 
 private fun loadRecipes(context: Context): List<Recipe> {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -1270,6 +1148,8 @@ private fun loadRecipes(context: Context): List<Recipe> {
 }
 
 
+ // Salva a meta de peso do utilizador nas SharedPreferences.
+
 private fun saveUserWeightGoal(context: Context, goal: String) {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val editor = sharedPrefs.edit()
@@ -1277,10 +1157,16 @@ private fun saveUserWeightGoal(context: Context, goal: String) {
     editor.apply()
 }
 
+
+ // Carrega a meta de peso do utilizador das SharedPreferences.
+
 private fun loadUserWeightGoal(context: Context): String {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     return sharedPrefs.getString(USER_WEIGHT_GOAL_KEY, "") ?: ""
 }
+
+
+ // Salva as calorias recomendadas nas SharedPreferences.
 
 private fun saveRecommendedCalories(context: Context, calories: Int?) {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -1292,6 +1178,9 @@ private fun saveRecommendedCalories(context: Context, calories: Int?) {
     }
     editor.apply()
 }
+
+
+ // Carrega as calorias recomendadas das SharedPreferences.
 
 private fun loadRecommendedCalories(context: Context): Int? {
     val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

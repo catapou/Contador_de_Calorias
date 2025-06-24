@@ -40,13 +40,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import kotlin.math.roundToInt
 
-
-
+// Definição de cores personalizadas para a UI
 val FadedGreen = Color(0xFF6C9E6C)
 val FadedRed = Color(0xFFB36B6B)
 val FadedBlue = Color(0xFF6A8EAE)
 
+
+ // Data class que representa uma refeição, incluindo seus valores nutricionais.
 
 data class Meal(
     val name: String,
@@ -60,7 +62,9 @@ data class Meal(
     val starch: Int = 0
 )
 
-// Novo data class para Receita, agora com os mesmos campos que Meal
+
+ // Data class que representa uma receita, com os mesmos valores nutricionais de uma refeição.
+
 data class Recipe(
     val name: String,
     val calories: Int,
@@ -73,6 +77,7 @@ data class Recipe(
     val starch: Int = 0
 )
 
+ //Data class que armazena as informações do perfil do utilizador.
 
 data class UserInfo(
     val dob: String = "",
@@ -83,6 +88,8 @@ data class UserInfo(
 )
 
 
+ //Um campo de input estilizado para valores nutricionais e outros dados.
+
 @Composable
 fun MacroInputField(
     value: String,
@@ -90,12 +97,13 @@ fun MacroInputField(
     label: String,
     keyboardType: KeyboardType = KeyboardType.Number,
     isDouble: Boolean = false,
-    isRequired: Boolean = false // Novo parâmetro
+    isRequired: Boolean = false
 ) {
     val displayLabel = if (isRequired) "$label *" else label // Adiciona "*" se for obrigatório
     OutlinedTextField(
         value = value,
         onValueChange = { newValue ->
+            // Validação de input para números e decimais
             if (keyboardType == KeyboardType.Number || isDouble) {
                 if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
                     onValueChange(newValue)
@@ -104,7 +112,7 @@ fun MacroInputField(
                 onValueChange(newValue)
             }
         },
-        label = { Text(displayLabel) }, // Usa o displayLabel
+        label = { Text(displayLabel) }, // Usa o rótulo com ou sem asterisco
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(),
@@ -122,7 +130,10 @@ fun MacroInputField(
     Spacer(modifier = Modifier.height(12.dp))
 }
 
-
+/**
+ * Diálogo para coletar as informações iniciais do utilizador (data de nascimento, peso, altura,
+ * nível de atividade e género).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InitialInfoDialog(
@@ -130,6 +141,7 @@ fun InitialInfoDialog(
     onInfoSubmitted: (UserInfo) -> Unit,
     initialUserInfo: UserInfo
 ) {
+    // Estados para os campos de input do utilizador
     var dobInput by remember { mutableStateOf(TextFieldValue(initialUserInfo.dob)) }
     var weightInput by remember { mutableStateOf(initialUserInfo.weight) }
     var heightInput by remember { mutableStateOf(initialUserInfo.height) }
@@ -138,6 +150,7 @@ fun InitialInfoDialog(
     var selectedActivityLevel by remember { mutableStateOf(initialUserInfo.activityLevel.ifEmpty { activityLevels[0] }) }
     var selectedGender by remember { mutableStateOf(initialUserInfo.gender) }
 
+    // Validação dos campos do formulário
     val isDobValid = remember(dobInput.text) {
         try {
             if (dobInput.text.length == 10 && dobInput.text[2] == '/' && dobInput.text[5] == '/') {
@@ -165,7 +178,9 @@ fun InitialInfoDialog(
             )
         },
         text = {
+            // Conteúdo do diálogo com campos de input e validações
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Campo de input para Data de Nascimento com formatação
                 OutlinedTextField(
                     value = dobInput,
                     onValueChange = { newTextFieldValue ->
@@ -195,7 +210,6 @@ fun InitialInfoDialog(
                             }
                         }
 
-
                         dobInput = TextFieldValue(
                             text = formattedText.take(10),
                             selection = TextRange(newCursorPosition.coerceIn(0, formattedText.take(10).length))
@@ -221,6 +235,7 @@ fun InitialInfoDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Campos de input para Peso e Altura
                 MacroInputField(
                     value = weightInput,
                     onValueChange = { weightInput = it },
@@ -243,6 +258,7 @@ fun InitialInfoDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Dropdown para Nível de Atividade
                 ExposedDropdownMenuBox(
                     expanded = activityExpanded,
                     onExpandedChange = { activityExpanded = !activityExpanded },
@@ -285,6 +301,7 @@ fun InitialInfoDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Seleção de Género com RadioButtons
                 Text(
                     "Gender",
                     fontSize = 18.sp,
@@ -317,6 +334,7 @@ fun InitialInfoDialog(
             }
         },
         confirmButton = {
+            // Botão de Confirmação, habilitado apenas se o formulário for válido
             TextButton(
                 onClick = {
                     onInfoSubmitted(UserInfo(dobInput.text, weightInput, heightInput, selectedActivityLevel, selectedGender))
@@ -332,6 +350,10 @@ fun InitialInfoDialog(
     )
 }
 
+/**
+ * Diálogo para exibir o IMC do utilizador e permitir a seleção de uma meta de peso,
+ * com cálculo de calorias recomendadas.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BMIDialog(
@@ -356,6 +378,7 @@ fun BMIDialog(
         },
         text = {
             Column {
+                // Exibição do IMC e sua classificação
                 if (bmi != null) {
                     Text(
                         "Your BMI: ${String.format("%.2f", bmi)}",
@@ -384,6 +407,7 @@ fun BMIDialog(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Seleção da meta de peso
                 Text(
                     "What is your weight goal?",
                     fontSize = 18.sp,
@@ -408,6 +432,7 @@ fun BMIDialog(
                     }
                 }
 
+                // Exibição de calorias diárias recomendadas
                 if (recommendedCalories != null && selectedGoal.isNotBlank()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -421,6 +446,7 @@ fun BMIDialog(
             }
         },
         confirmButton = {
+            // Botão de Confirmação para fechar o diálogo
             TextButton(
                 onClick = onDismiss,
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedBlue, contentColor = Color.White),
@@ -433,10 +459,11 @@ fun BMIDialog(
     )
 }
 
+//Diálogo para exibir um resumo dos valores nutricionais totais de todas as refeições.
 
-// Macro summary dialog
 @Composable
 fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
+    // Cálculo dos totais de calorias e macronutrientes
     val totalCalories = mealList.sumOf { it.calories }
     val totalProtein = mealList.sumOf { it.protein }
     val totalCarbs = mealList.sumOf { it.carbs }
@@ -458,6 +485,7 @@ fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
             )
         },
         text = {
+            // Exibição dos totais de cada macronutriente
             Column {
                 Text(
                     "Total Calories: $totalCalories Kcal",
@@ -518,22 +546,27 @@ fun MacroSummaryDialog(mealList: List<Meal>, onDismiss: () -> Unit) {
     )
 }
 
-// Novo composable para adicionar Receitas
+/**
+ * Diálogo para adicionar uma nova receita, permitindo ao utilizador inserir o nome
+ * e os valores nutricionais por 100g.
+ */
 @Composable
 fun AddRecipeDialog(
     onDismiss: () -> Unit,
     onRecipeAdded: (Recipe) -> Unit
 ) {
+    // Estados para os campos de input da receita
     var recipeName by remember { mutableStateOf("") }
     var recipeCalories by remember { mutableStateOf("") }
     var recipeProtein by remember { mutableStateOf("") }
     var recipeCarbs by remember { mutableStateOf("") }
     var recipeFats by remember { mutableStateOf("") }
-    var recipeSalt by remember { mutableStateOf("") } // Novo campo
-    var recipeFiber by remember { mutableStateOf("") } // Novo campo
-    var recipePolyols by remember { mutableStateOf("") } // Novo campo
-    var recipeStarch by remember { mutableStateOf("") } // Novo campo
+    var recipeSalt by remember { mutableStateOf("") }
+    var recipeFiber by remember { mutableStateOf("") }
+    var recipePolyols by remember { mutableStateOf("") }
+    var recipeStarch by remember { mutableStateOf("") }
 
+    // Validação do formulário: nome e calorias são obrigatórios
     val isFormValid = recipeName.isNotBlank() && (recipeCalories.toIntOrNull() ?: 0) > 0
 
     AlertDialog(
@@ -547,9 +580,10 @@ fun AddRecipeDialog(
             )
         },
         text = {
+            // Campos de input para os detalhes da receita
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Values are for 100g", // Nota adicionada
+                    "Values are for 100g",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -559,27 +593,29 @@ fun AddRecipeDialog(
                 MacroInputField(value = recipeProtein, onValueChange = { recipeProtein = it }, label = "Protein (g)")
                 MacroInputField(value = recipeCarbs, onValueChange = { recipeCarbs = it }, label = "Carbohydrates (g)")
                 MacroInputField(value = recipeFats, onValueChange = { recipeFats = it }, label = "Fats (g)")
-                MacroInputField(value = recipeSalt, onValueChange = { recipeSalt = it }, label = "Salt (g)", isDouble = true) // Campo de Sal
-                MacroInputField(value = recipeFiber, onValueChange = { recipeFiber = it }, label = "Fiber (g)") // Campo de Fibra
-                MacroInputField(value = recipePolyols, onValueChange = { recipePolyols = it }, label = "Polyols (g)") // Campo de Polióis
-                MacroInputField(value = recipeStarch, onValueChange = { recipeStarch = it }, label = "Starch (g)") // Campo de Amido
+                MacroInputField(value = recipeSalt, onValueChange = { recipeSalt = it }, label = "Salt (g)", isDouble = true)
+                MacroInputField(value = recipeFiber, onValueChange = { recipeFiber = it }, label = "Fiber (g)")
+                MacroInputField(value = recipePolyols, onValueChange = { recipePolyols = it }, label = "Polyols (g)")
+                MacroInputField(value = recipeStarch, onValueChange = { recipeStarch = it }, label = "Starch (g)")
             }
         },
         confirmButton = {
+            // Botão "Add Recipe", habilitado se o formulário for válido
             TextButton(
                 onClick = {
+                    // Cria uma nova receita com os dados inseridos
                     val newRecipe = Recipe(
                         name = recipeName.trim(),
                         calories = recipeCalories.toIntOrNull() ?: 0,
                         protein = recipeProtein.toIntOrNull() ?: 0,
                         carbs = recipeCarbs.toIntOrNull() ?: 0,
                         fats = recipeFats.toIntOrNull() ?: 0,
-                        salt = recipeSalt.toDoubleOrNull() ?: 0.0, // Salvando sal
-                        fiber = recipeFiber.toIntOrNull() ?: 0, // Salvando fibra
-                        polyols = recipePolyols.toIntOrNull() ?: 0, // Salvando polióis
-                        starch = recipeStarch.toIntOrNull() ?: 0 // Salvando amido
+                        salt = recipeSalt.toDoubleOrNull() ?: 0.0,
+                        fiber = recipeFiber.toIntOrNull() ?: 0,
+                        polyols = recipePolyols.toIntOrNull() ?: 0,
+                        starch = recipeStarch.toIntOrNull() ?: 0
                     )
-                    onRecipeAdded(newRecipe)
+                    onRecipeAdded(newRecipe) // Envia a nova receita para a lógica principal
                     onDismiss()
                 },
                 colors = ButtonDefaults.textButtonColors(containerColor = FadedGreen, contentColor = Color.White),
@@ -589,6 +625,7 @@ fun AddRecipeDialog(
             }
         },
         dismissButton = {
+            // Botão "Cancel" para descartar o diálogo
             TextButton(
                 onClick = onDismiss,
                 colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
@@ -598,4 +635,221 @@ fun AddRecipeDialog(
         },
         containerColor = MaterialTheme.colorScheme.surface
     )
+}
+
+/**
+ * Diálogo para o utilizador inserir a quantidade (em gramas) de uma receita selecionada,
+ * e ver os valores nutricionais calculados para essa quantidade.
+ */
+@Composable
+fun QuantityInputDialog(
+    recipe: Recipe,
+    onDismiss: () -> Unit,
+    onMealCalculated: (Meal) -> Unit
+) {
+    var quantityGrams by remember { mutableStateOf("") }
+    val grams = quantityGrams.toDoubleOrNull() ?: 0.0
+
+    // Cálculo dos valores nutricionais com base na quantidade inserida
+    val calculatedCalories = remember(grams) { (recipe.calories * (grams / 100.0)).roundToInt() }
+    val calculatedProtein = remember(grams) { (recipe.protein * (grams / 100.0)).roundToInt() }
+    val calculatedCarbs = remember(grams) { (recipe.carbs * (grams / 100.0)).roundToInt() }
+    val calculatedFats = remember(grams) { (recipe.fats * (grams / 100.0)).roundToInt() }
+    val calculatedSalt = remember(grams) { recipe.salt * (grams / 100.0) }
+    val calculatedFiber = remember(grams) { (recipe.fiber * (grams / 100.0)).roundToInt() }
+    val calculatedPolyols = remember(grams) { (recipe.polyols * (grams / 100.0)).roundToInt() }
+    val calculatedStarch = remember(grams) { (recipe.starch * (grams / 100.0)).roundToInt() }
+
+    // Habilita o botão "Confirm" apenas se a quantidade for maior que zero
+    val isConfirmEnabled = grams > 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Enter Quantity for ${recipe.name}", color = MaterialTheme.colorScheme.onSurface)
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Campo de input para a quantidade em gramas
+                MacroInputField(
+                    value = quantityGrams,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            quantityGrams = newValue
+                        }
+                    },
+                    label = "Quantity (grams)",
+                    keyboardType = KeyboardType.Number,
+                    isDouble = true,
+                    isRequired = true
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                // Exibição dos valores nutricionais calculados
+                Text("Calculated Nutritional Values:", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Calories: ${calculatedCalories} Kcal", color = MaterialTheme.colorScheme.onSurface)
+                Text("Protein: ${calculatedProtein} g", color = MaterialTheme.colorScheme.onSurface)
+                Text("Carbohydrates: ${calculatedCarbs} g", color = MaterialTheme.colorScheme.onSurface)
+                Text("Fats: ${calculatedFats} g", color = MaterialTheme.colorScheme.onSurface)
+                Text("Salt: ${String.format("%.1f", calculatedSalt)} g", color = MaterialTheme.colorScheme.onSurface)
+                Text("Fiber: ${calculatedFiber} g", color = MaterialTheme.colorScheme.onSurface)
+                Text("Polyols: ${calculatedPolyols} g", color = MaterialTheme.colorScheme.onSurface)
+                Text("Starch: ${calculatedStarch} g", color = MaterialTheme.colorScheme.onSurface)
+            }
+        },
+        confirmButton = {
+            // Botão "Confirm", habilitado se a quantidade for válida
+            TextButton(
+                onClick = {
+                    val meal = Meal(
+                        name = "${recipe.name} (${grams.roundToInt()}g)",
+                        calories = calculatedCalories,
+                        protein = calculatedProtein,
+                        carbs = calculatedCarbs,
+                        fats = calculatedFats,
+                        salt = calculatedSalt,
+                        fiber = calculatedFiber,
+                        polyols = calculatedPolyols,
+                        starch = calculatedStarch
+                    )
+                    onMealCalculated(meal)
+                },
+                colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen),
+                enabled = isConfirmEnabled
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            // Botão "Cancel" para descartar o diálogo
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
+            ) {
+                Text("Cancel")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+
+ // Diálogo para adicionar uma refeição personalizada, permitindo inserir todos os detalhes
+
+@Composable
+fun CustomMealInputDialog(
+    onDismiss: () -> Unit,
+    onMealAdded: (Meal) -> Unit,
+    mealName: String,
+    mealCalories: String,
+    mealProtein: String,
+    mealCarbs: String,
+    mealFats: String,
+    mealSalt: String,
+    mealFiber: String,
+    mealPolyols: String,
+    mealStarch: String,
+    onNameChange: (String) -> Unit,
+    onCaloriesChange: (String) -> Unit,
+    onProteinChange: (String) -> Unit,
+    onCarbsChange: (String) -> Unit,
+    onFatsChange: (String) -> Unit,
+    onSaltChange: (String) -> Unit,
+    onFiberChange: (String) -> Unit,
+    onPolyolsChange: (String) -> Unit,
+    onStarchChange: (String) -> Unit
+) {
+    // Validação do formulário: nome e calorias são obrigatórios
+    val isConfirmEnabled = mealName.isNotBlank() && (mealCalories.toIntOrNull() ?: 0) > 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Add Custom Meal", color = MaterialTheme.colorScheme.onSurface)
+        },
+        text = {
+            // Campos de input para os detalhes da refeição personalizada
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                MacroInputField(value = mealName, onValueChange = onNameChange, label = "Meal name", keyboardType = KeyboardType.Text, isRequired = true)
+                MacroInputField(value = mealCalories, onValueChange = onCaloriesChange, label = "calories (Kcal)", isRequired = true)
+                MacroInputField(value = mealProtein, onValueChange = onProteinChange, label = "Protein (g)")
+                MacroInputField(value = mealCarbs, onValueChange = onCarbsChange, label = "Carbohydrates (g)")
+                MacroInputField(value = mealFats, onValueChange = onFatsChange, label = "Fats (g)")
+                MacroInputField(value = mealSalt, onValueChange = onSaltChange, label = "Salt (g)", isDouble = true)
+                MacroInputField(value = mealFiber, onValueChange = onFiberChange, label = "Fiber (g)")
+                MacroInputField(value = mealPolyols, onValueChange = onPolyolsChange, label = "Polyols (g)")
+                MacroInputField(value = mealStarch, onValueChange = onStarchChange, label = "Starch (g)")
+            }
+        },
+        confirmButton = {
+            // Botão "Confirm", habilitado se o formulário for válido
+            TextButton(
+                onClick = {
+                    // Cria o objeto Meal com os dados inseridos
+                    val newMeal = Meal(
+                        name = mealName.trim(),
+                        calories = mealCalories.toIntOrNull() ?: 0,
+                        protein = mealProtein.toIntOrNull() ?: 0,
+                        carbs = mealCarbs.toIntOrNull() ?: 0,
+                        fats = mealFats.toIntOrNull() ?: 0,
+                        salt = mealSalt.toDoubleOrNull() ?: 0.0,
+                        fiber = mealFiber.toIntOrNull() ?: 0,
+                        polyols = mealPolyols.toIntOrNull() ?: 0,
+                        starch = mealStarch.toIntOrNull() ?: 0
+                    )
+                    onMealAdded(newMeal)
+                },
+                colors = ButtonDefaults.textButtonColors(contentColor = FadedGreen),
+                enabled = isConfirmEnabled
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            // Botão "Cancel" para descartar o diálogo
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = FadedRed)
+            ) {
+                Text("Cancel")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+
+ //Calcula a Taxa Metabólica Basal (BMR) usando a fórmula de Mifflin-St Jeor.
+
+fun calculateBMR(weightKg: Double, heightCm: Double, ageYears: Int, gender: String): Double {
+    return when (gender) {
+        "Man" -> (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) + 5
+        "Woman" -> (10 * weightKg) + (6.25 * heightCm) - (5 * ageYears) - 161
+        else -> 0.0
+    }
+}
+
+
+ //Calcula o Gasto Energético Diário Total (TDEE) com base na BMR e no nível de atividade.
+
+fun calculateTDEE(bmr: Double, activityLevel: String): Int {
+    val activityFactor = when (activityLevel) {
+        "Sedentary" -> 1.2
+        "Lightly Active" -> 1.375
+        "Moderately Active" -> 1.55
+        "Very Active" -> 1.725
+        "Extra Active" -> 1.9
+        else -> 1.2
+    }
+    return (bmr * activityFactor).roundToInt()
+}
+
+ // Calcula as calorias diárias recomendadas com base no TDEE e na meta de peso.
+
+fun getRecommendedCalories(tdee: Int, goal: String): Int {
+    return when (goal) {
+        "Maintain Weight" -> tdee
+        "Lose Weight" -> tdee - 500
+        "Gain Weight" -> tdee + 500
+        else -> tdee
+    }
 }
